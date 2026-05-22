@@ -1,0 +1,26 @@
+
+> admin-web@0.1.0 build
+> cross-env NODE_OPTIONS=--max-old-space-size=8192 next build
+
+▲ Next.js 16.2.4 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 6.1s
+  Running TypeScript ...
+Failed to type check.
+
+./src/app/(dashboard)/bookings/page.tsx:47:5
+Type error: Type 'Resolver<{ rider_id: string; type: "ride" | "parcel" | "freight" | "rental"; status: "accepted" | "arrived" | "in_progress" | "completed" | "searching" | "cancelled" | "scheduled"; pickup_address: string; dropoff_address: string; estimated_fare: unknown; driver_id?: string | undefined; notes?: string | undefined; },...' is not assignable to type 'Resolver<{ rider_id: string; type: "ride" | "parcel" | "freight" | "rental"; status: "accepted" | "arrived" | "in_progress" | "completed" | "searching" | "cancelled" | "scheduled"; pickup_address: string; dropoff_address: string; estimated_fare: number; driver_id?: string | undefined; notes?: string | undefined; }, ...'.
+  Types of parameters 'options' and 'options' are incompatible.
+    Type 'ResolverOptions<{ rider_id: string; type: "ride" | "parcel" | "freight" | "rental"; status: "accepted" | "arrived" | "in_progress" | "completed" | "searching" | "cancelled" | "scheduled"; pickup_address: string; dropoff_address: string; estimated_fare: number; driver_id?: string | undefined; notes?: string | undefin...' is not assignable to type 'ResolverOptions<{ rider_id: string; type: "ride" | "parcel" | "freight" | "rental"; status: "accepted" | "arrived" | "in_progress" | "completed" | "searching" | "cancelled" | "scheduled"; pickup_address: string; dropoff_address: string; estimated_fare: unknown; driver_id?: string | undefined; notes?: string | undefi...'.
+      Type 'unknown' is not assignable to type 'number'.
+
+  [90m45 |[0m
+  [90m46 |[0m   [36mconst[0m { register, handleSubmit, reset, formState: { errors } } = useForm<[33mBookingFormData[0m>({
+[31m[1m>[0m [90m47 |[0m     resolver: zodResolver(bookingSchema),
+  [90m   |[0m     [31m[1m^[0m
+  [90m48 |[0m     defaultValues: {
+  [90m49 |[0m       [36mtype[0m: [32m'ride'[0m,
+  [90m50 |[0m       status: [32m'searching'[0m,
+Next.js build worker exited with code: 1 and signal: null
