@@ -7,6 +7,7 @@ import { Card, Badge, Input, ConfirmModal } from '@/components/ui'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { PayoutService } from '@/lib/services/payout-service'
+import { SettingsService } from '@/lib/services/settings-service'
 import { Payout } from '@/lib/types'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -17,6 +18,7 @@ export default function PayoutsPage() {
   const [analytics, setAnalytics] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [threshold, setThreshold] = useState("50")
+  const [schedule, setSchedule] = useState("Every Monday")
   const [searchTerm, setSearchTerm] = useState('')
   const [releaseConfirmId, setReleaseConfirmId] = useState<string | null>(null)
   const [isBatchConfirmOpen, setIsBatchConfirmOpen] = useState(false)
@@ -101,6 +103,18 @@ export default function PayoutsPage() {
     }
     setIsBatchConfirmOpen(true)
   }
+
+  const saveRulesMutation = useMutation({
+    mutationFn: async () => {
+      await SettingsService.updateSetting('payout_rules', { threshold, schedule })
+    },
+    onSuccess: () => {
+      toast.success('Payout rules saved successfully!')
+    },
+    onError: () => {
+      toast.error('Failed to save payout rules.')
+    }
+  })
 
   const filteredPayouts = payouts.filter(p => {
     const driverName = `${p.wallet?.user?.first_name} ${p.wallet?.user?.last_name}`.toLowerCase()
@@ -284,12 +298,23 @@ export default function PayoutsPage() {
                 </div>
                 <div className="flex items-center justify-between gap-12 bg-gray-100 p-4 rounded-2xl border border-black/5">
                    <span className="text-xs font-bold text-gray-600 uppercase tracking-widest">Schedule</span>
-                   <select className="bg-transparent text-xs font-bold text-gray-900 outline-none">
+                   <select 
+                     className="bg-transparent text-xs font-bold text-gray-900 outline-none"
+                     value={schedule}
+                     onChange={(e) => setSchedule(e.target.value)}
+                   >
                       <option>Every Monday</option>
                       <option>Every Friday</option>
                       <option>Instant Payout</option>
                    </select>
                 </div>
+                <Button 
+                  onClick={() => saveRulesMutation.mutate()} 
+                  disabled={saveRulesMutation.isPending}
+                  className="w-full font-black italic tracking-widest uppercase shadow-lg shadow-primary/20"
+                >
+                  {saveRulesMutation.isPending ? 'SAVING...' : 'SAVE RULES'}
+                </Button>
              </div>
           </div>
        </Card>

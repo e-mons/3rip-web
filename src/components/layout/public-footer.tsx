@@ -81,7 +81,7 @@ export function PublicFooter() {
                 { name: "Features", href: "/#features" },
                 { name: "Services", href: "/ride" },
                 { name: "About Us", href: "/about" },
-                { name: "Contact Us", href: "mailto:support@3rip.com" }
+                { name: "Contact Us", href: "mailto:support@3rip.org" }
               ].map((link) => (
                 <li key={link.name}>
                   <Link href={link.href} className="text-gray-400 text-[15px] font-medium hover:text-[var(--color-primary)] transition-colors">
@@ -102,11 +102,11 @@ export function PublicFooter() {
               </li>
               <li className="flex items-center gap-4 text-gray-400 text-[15px] font-medium">
                 <Globe size={18} className="text-[var(--color-primary)]" />
-                www.3rip.com
+                www.3rip.org
               </li>
               <li className="flex items-center gap-4 text-gray-400 text-[15px] font-medium">
                 <Mail size={18} className="text-[var(--color-primary)]" />
-                support@3rip.com
+                support@3rip.org
               </li>
               <li className="flex items-start gap-4 text-gray-400 text-[15px] font-medium">
                 <MapPin size={18} className="text-[var(--color-primary)] shrink-0" />

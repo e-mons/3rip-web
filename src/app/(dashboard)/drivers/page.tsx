@@ -372,7 +372,7 @@ export default function DriversPage() {
             <Input 
               {...register('email')}
               type="email"
-              placeholder="driver@example.com"
+              placeholder="driver@example.org"
             />
             {errors.email && <p className="text-red-500 text-xs">{errors.email.message}</p>}
           </div>

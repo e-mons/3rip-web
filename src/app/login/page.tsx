@@ -73,7 +73,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full bg-gray-50 border border-gray-100 rounded-2xl py-3.5 pl-12 pr-4 text-gray-900 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-gray-400"
-                    placeholder="admin@3rip.com"
+                    placeholder="admin@3rip.org"
                   />
                 </div>
               </div>

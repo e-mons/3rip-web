@@ -92,6 +92,12 @@ export default function SystemSettingsPage() {
       } else if (data.system_timezone.includes('Eastern Time')) {
         offset = '-05:00'
         timezone = 'America/New_York'
+      } else if (data.system_timezone.includes('West Africa Time')) {
+        offset = '+01:00'
+        timezone = 'Africa/Lagos'
+      } else if (data.system_timezone.includes('Central Africa Time')) {
+        offset = '+02:00'
+        timezone = 'Africa/Cairo'
       }
 
       await Promise.all([
@@ -190,7 +196,16 @@ export default function SystemSettingsPage() {
                      </div>
                      <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-0.5">Primary Currency</p>
-                        <p className="text-sm font-bold text-gray-900">{formData.primary_currency}</p>
+                        <select 
+                          className="text-sm font-bold text-gray-900 bg-transparent outline-none cursor-pointer"
+                          value={formData.primary_currency}
+                          onChange={(e) => setFormData(prev => ({ ...prev, primary_currency: e.target.value }))}
+                        >
+                          <option value="USD">USD</option>
+                          {currencies.filter(c => c.code !== 'USD').map(c => (
+                            <option key={c.id || c.code} value={c.code}>{c.code}</option>
+                          ))}
+                        </select>
                      </div>
                   </div>
                   <CheckCircle2 className="w-6 h-6 text-primary" />
@@ -244,6 +259,8 @@ export default function SystemSettingsPage() {
                      <option>(UTC+04:00) Abu Dhabi, Muscat</option>
                      <option>(UTC+00:00) London, Lisbon</option>
                      <option>(UTC-05:00) Eastern Time (US & Canada)</option>
+                     <option>(UTC+01:00) West Africa Time (Lagos)</option>
+                     <option>(UTC+02:00) Central Africa Time</option>
                   </select>
                   <Button variant="secondary" size="icon" className="shrink-0 h-11 w-11"><HelpCircle className="w-5 h-5 text-gray-400" /></Button>
                </div>

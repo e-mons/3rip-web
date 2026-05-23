@@ -75,11 +75,18 @@ export const couponSchema = z.object({
 
 export type CouponFormData = z.infer<typeof couponSchema>
 
-export const referralSettingsSchema = z.object({
+export const referralRuleSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, 'Rule name is required'),
   referrer_reward: z.coerce.number().min(0).max(100),
   friend_reward: z.coerce.number().min(0)
 })
 
+export const referralSettingsSchema = z.object({
+  rules: z.array(referralRuleSchema)
+})
+
+export type ReferralRuleFormData = z.infer<typeof referralRuleSchema>
 export type ReferralSettingsFormData = z.infer<typeof referralSettingsSchema>
 
 /**

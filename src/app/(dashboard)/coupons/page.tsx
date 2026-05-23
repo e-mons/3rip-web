@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import { CouponService } from '@/lib/services/coupon-service'
 import { SettingsService } from '@/lib/services/settings-service'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useForm } from 'react-hook-form'
+import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { couponSchema, CouponFormData, referralSettingsSchema, ReferralSettingsFormData } from '@/lib/validations'
 import { toast } from 'sonner'
@@ -47,19 +47,26 @@ export default function CouponsPage() {
   })
 
   // React Hook Form for referral settings
-  const { register: registerRef, handleSubmit: handleRefSubmit, setValue: setRefValue, formState: { errors: refErrors } } = useForm<ReferralSettingsFormData>({
+  const { register: registerRef, control, handleSubmit: handleRefSubmit, setValue: setRefValue, formState: { errors: refErrors } } = useForm<ReferralSettingsFormData>({
     resolver: zodResolver(referralSettingsSchema) as any,
     defaultValues: {
-      referrer_reward: 10,
-      friend_reward: 5
+      rules: [{ name: 'Default Rule', referrer_reward: 10, friend_reward: 5 }]
     }
+  })
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "rules"
   })
 
   // Populate referral form values once settings are loaded
   useEffect(() => {
-    const referralConfig = settings.find((s: any) => s.key === 'referral_program')?.value || { friend_reward: 5, referrer_discount: 10 }
-    setRefValue('friend_reward', referralConfig.friend_reward)
-    setRefValue('referrer_reward', referralConfig.referrer_discount)
+    const referralConfig = settings.find((s: any) => s.key === 'referral_program')?.value || { rules: [{ name: 'Default Rule', referrer_reward: 10, friend_reward: 5 }] }
+    if (referralConfig.rules) {
+      setRefValue('rules', referralConfig.rules)
+    } else {
+      setRefValue('rules', [{ name: 'Legacy Rule', referrer_reward: referralConfig.referrer_discount || 10, friend_reward: referralConfig.friend_reward || 5 }])
+    }
   }, [settings, setRefValue])
 
   const createCouponMutation = useMutation({
@@ -102,8 +109,7 @@ export default function CouponsPage() {
 
   const updateReferralMutation = useMutation({
     mutationFn: (data: ReferralSettingsFormData) => SettingsService.updateSetting('referral_program', {
-      friend_reward: data.friend_reward,
-      referrer_discount: data.referrer_reward
+      rules: data.rules
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings'] })
@@ -249,40 +255,63 @@ export default function CouponsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="p-8">
             <form onSubmit={handleRefSubmit(onSubmitReferral)}>
-              <h3 className="text-lg font-bold mb-6 flex items-center gap-3 text-gray-900 uppercase italic">
-                 <Users className="w-5 h-5 text-primary" />
-                 Referral Architecture
-              </h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-bold flex items-center gap-3 text-gray-900 uppercase italic">
+                   <Users className="w-5 h-5 text-primary" />
+                   Referral Architecture
+                </h3>
+                <Button 
+                  type="button" 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={() => append({ name: 'New Rule', referrer_reward: 0, friend_reward: 0 })}
+                >
+                  + Add Rule
+                </Button>
+              </div>
               <div className="space-y-6">
-                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-black/5">
-                    <div>
-                       <p className="text-sm font-bold text-gray-900">Referrer Reward (Percentage)</p>
-                       <p className="text-xs text-gray-500">Discount applied to existing user's next trip.</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                       <Input 
-                          {...registerRef('referrer_reward')}
-                          className={cn("w-20 py-2 h-9 text-center bg-white font-black italic", refErrors.referrer_reward ? "border-red-500" : "border-black/5")} 
-                       />
-                       <span className="text-sm font-bold text-gray-400">%</span>
-                    </div>
-                 </div>
-                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-black/5">
-                    <div>
-                       <p className="text-sm font-bold text-gray-900">Friend Reward (Fixed Amount)</p>
-                       <p className="text-xs text-gray-500">Instant credit given to the new user sign-up.</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                       <Input 
-                          {...registerRef('friend_reward')}
-                          className={cn("w-20 py-2 h-9 text-center bg-white font-black italic", refErrors.friend_reward ? "border-red-500" : "border-black/5")} 
-                       />
-                       <span className="text-sm font-bold text-gray-400">$</span>
-                    </div>
-                 </div>
+                 {fields.map((field, index) => (
+                   <div key={field.id} className="p-4 bg-gray-50 rounded-2xl border border-black/5 relative group">
+                      <Button 
+                        type="button"
+                        variant="ghost" 
+                        size="icon" 
+                        className="absolute top-2 right-2 w-6 h-6 opacity-0 group-hover:opacity-100 hover:text-red-500"
+                        onClick={() => remove(index)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                      <div className="mb-4 pr-8">
+                        <p className="text-sm font-bold text-gray-900 mb-2">Rule Name</p>
+                        <Input 
+                           {...registerRef(`rules.${index}.name` as const)}
+                           className={cn("bg-white border-black/5", refErrors.rules?.[index]?.name ? "border-red-500" : "")} 
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                           <p className="text-xs font-bold text-gray-900 mb-1">Referrer Reward (%)</p>
+                           <Input 
+                              type="number"
+                              {...registerRef(`rules.${index}.referrer_reward` as const)}
+                              className={cn("bg-white font-black italic", refErrors.rules?.[index]?.referrer_reward ? "border-red-500" : "border-black/5")} 
+                           />
+                        </div>
+                        <div>
+                           <p className="text-xs font-bold text-gray-900 mb-1">Friend Reward ($)</p>
+                           <Input 
+                              type="number"
+                              {...registerRef(`rules.${index}.friend_reward` as const)}
+                              className={cn("bg-white font-black italic", refErrors.rules?.[index]?.friend_reward ? "border-red-500" : "border-black/5")} 
+                           />
+                        </div>
+                      </div>
+                   </div>
+                 ))}
+                 
                  <Button 
                    type="submit"
-                   className="w-full h-12 font-black italic tracking-widest uppercase" 
+                   className="w-full h-12 font-black italic tracking-widest uppercase mt-4" 
                    disabled={updateReferralMutation.isPending}
                  >
                    {updateReferralMutation.isPending ? 'PUBLISHING...' : 'PUBLISH REFERRAL RULES'}

@@ -364,7 +364,7 @@ export default function UsersPage() {
             <Input 
               {...register('email')}
               type="email"
-              placeholder="john@example.com"
+              placeholder="john@example.org"
             />
             {errors.email && <p className="text-red-500 text-xs">{errors.email.message}</p>}
           </div>
