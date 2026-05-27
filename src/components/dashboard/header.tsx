@@ -3,6 +3,7 @@
 import React from 'react'
 import { Search, Bell, Moon, Sun, Search as SearchIcon, ChevronRight } from 'lucide-react'
 import { usePathname } from 'next/navigation'
+import Link from 'next/link'
 
 export function Header() {
   const pathname = usePathname()
@@ -55,10 +56,12 @@ export function Header() {
         <div className="h-6 w-[1px] bg-black/5 mx-2" />
 
         {/* Notifications */}
-        <button className="relative w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center border border-gray-100 hover:bg-gray-100 transition-all group">
-          <Bell className="w-5 h-5 text-gray-400 group-hover:text-gray-900 transition-colors" />
-          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-primary rounded-full border-2 border-white" />
-        </button>
+        <Link href="/notifications">
+          <button className="relative w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center border border-gray-100 hover:bg-gray-100 transition-all group">
+            <Bell className="w-5 h-5 text-gray-400 group-hover:text-gray-900 transition-colors" />
+            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-primary rounded-full border-2 border-white" />
+          </button>
+        </Link>
 
         {/* Profile (Simplified for Header) */}
         <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-blue-600 p-0.5 shadow-lg shadow-primary/20">

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { Banknote, CreditCard, Clock, CheckCircle2, AlertCircle, Search, Filter, Download, User, ArrowUpRight, ShieldCheck, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, Badge, Input, ConfirmModal } from '@/components/ui'
+import { Card, Badge, Input, ConfirmModal, Modal } from '@/components/ui'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { PayoutService } from '@/lib/services/payout-service'
@@ -22,16 +22,24 @@ export default function PayoutsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [releaseConfirmId, setReleaseConfirmId] = useState<string | null>(null)
   const [isBatchConfirmOpen, setIsBatchConfirmOpen] = useState(false)
+  const [inspectPayout, setInspectPayout] = useState<any | null>(null)
 
   const loadData = async () => {
     try {
       setIsLoading(true)
-      const [payoutsData, stats] = await Promise.all([
+      const [payoutsData, stats, settings] = await Promise.all([
         PayoutService.getPayouts(),
-        PayoutService.getAnalytics()
+        PayoutService.getAnalytics(),
+        SettingsService.getSettings().catch(() => [])
       ])
       setPayouts(payoutsData)
       setAnalytics(stats)
+
+      const rules = settings.find((s: any) => s.key === 'payout_rules')?.value
+      if (rules) {
+        if (rules.threshold) setThreshold(rules.threshold)
+        if (rules.schedule) setSchedule(rules.schedule)
+      }
     } catch (error) {
       console.error('Failed to load payouts:', error)
     } finally {
@@ -48,7 +56,7 @@ export default function PayoutsPage() {
     const data = payouts.map(p => [
       p.id,
       `${p.wallet?.user?.first_name || ''} ${p.wallet?.user?.last_name || ''}`.trim(),
-      p.amount,
+      Math.abs(Number(p.amount)).toFixed(2),
       p.status,
       new Date(p.created_at).toLocaleDateString()
     ])
@@ -214,7 +222,7 @@ export default function PayoutsPage() {
                              <div className="grid grid-cols-2 md:grid-cols-4 gap-8 flex-1 lg:ml-12">
                                 <div>
                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Requested Amount</p>
-                                   <p className="text-sm font-black italic text-gray-900">${Number(payout.amount).toFixed(2)}</p>
+                                   <p className="text-sm font-black italic text-gray-900">${Math.abs(Number(payout.amount)).toFixed(2)}</p>
                                 </div>
                                 <div>
                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Wallet Balance</p>
@@ -240,11 +248,7 @@ export default function PayoutsPage() {
                                    variant="secondary" 
                                    size="sm" 
                                    className="h-10 text-[10px] font-black tracking-widest uppercase"
-                                   onClick={() => {
-                                      toast.info(`Transaction Ledger Audit`, {
-                                         description: `Verified POT-${payout.id.split('-')[0].toUpperCase()} against bank gateway. Status: VALIDATED.`,
-                                      })
-                                   }}
+                                   onClick={() => setInspectPayout(payout)}
                                  >
                                     Inspect Ledger
                                  </Button>
@@ -346,6 +350,58 @@ export default function PayoutsPage() {
         title="Execute Payout Cycle"
         description={`You are about to process ${payouts.filter(p => p.status === 'pending').length} pending payouts. This will batch transfer all available driver earnings.`}
       />
+
+      {/* Ledger Inspection Modal */}
+      <Modal
+        isOpen={!!inspectPayout}
+        onClose={() => setInspectPayout(null)}
+        title="Ledger & Payout Inspection"
+      >
+        {inspectPayout && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between p-4 bg-gray-50 border border-black/5 rounded-2xl">
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Transaction ID</p>
+                <code className="text-xs font-mono font-bold text-gray-900 select-all">{inspectPayout.id}</code>
+              </div>
+              <Badge variant={inspectPayout.status === 'completed' ? 'success' : inspectPayout.status === 'failed' ? 'danger' : 'warning'}>
+                {inspectPayout.status}
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <h4 className="text-xs font-black uppercase tracking-widest text-gray-400 border-b border-gray-100 pb-2">Driver Details</h4>
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-500">Name: <strong className="text-gray-900">{inspectPayout.wallet?.user?.first_name} {inspectPayout.wallet?.user?.last_name}</strong></p>
+                  <p className="text-xs text-gray-500">Email: <strong className="text-gray-900">{inspectPayout.wallet?.user?.email}</strong></p>
+                  <p className="text-xs text-gray-500">Driver ID: <code className="text-[10px] font-mono text-gray-900">{inspectPayout.wallet?.user?.id}</code></p>
+                  <p className="text-xs text-gray-500">Verification Status: <Badge variant={inspectPayout.wallet?.user?.drivers?.[0]?.status === 'active' ? 'success' : 'warning'}>{inspectPayout.wallet?.user?.drivers?.[0]?.status || 'Pending Verification'}</Badge></p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-xs font-black uppercase tracking-widest text-gray-400 border-b border-gray-100 pb-2">Financials & Gateway</h4>
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-500">Payout Requested: <strong className="text-gray-900">${Math.abs(Number(inspectPayout.amount)).toFixed(2)}</strong></p>
+                  <p className="text-xs text-gray-500">Current Wallet Balance: <strong className="text-gray-900">${Number(inspectPayout.wallet?.balance).toFixed(2)}</strong></p>
+                  <p className="text-xs text-gray-500">Paystack Recipient: <code className="text-xs font-mono font-bold text-gray-900">{inspectPayout.wallet?.user?.drivers?.[0]?.paystack_recipient_code || 'None Configured'}</code></p>
+                  <p className="text-xs text-gray-500">Created: <strong className="text-gray-900">{new Date(inspectPayout.created_at).toLocaleString()}</strong></p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-gray-100 flex justify-end">
+              <Button 
+                onClick={() => setInspectPayout(null)}
+                className="font-black italic tracking-widest uppercase"
+              >
+                Close Audit
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

@@ -11,9 +11,14 @@ export const PayoutService = {
         wallet:wallet_id (
           balance,
           user:user_id (
+            id,
             first_name,
             last_name,
-            email
+            email,
+            drivers:drivers(
+              paystack_recipient_code,
+              status
+            )
           )
         )
       `)
@@ -60,7 +65,7 @@ export const PayoutService = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: transaction.amount,
+          amount: Math.abs(Number(transaction.amount)),
           recipientCode: recipientCode,
           reference: transactionId,
           reason: `Payout for transaction ${transactionId}`
@@ -100,11 +105,11 @@ export const PayoutService = {
 
     const totalPending = withdrawals
       ?.filter(w => w.status === 'pending')
-      .reduce((acc, w) => acc + Number(w.amount), 0) || 0
+      .reduce((acc, w) => acc + Math.abs(Number(w.amount)), 0) || 0
     
     const processedMtd = withdrawals
       ?.filter(w => w.status === 'completed')
-      .reduce((acc, w) => acc + Number(w.amount), 0) || 0
+      .reduce((acc, w) => acc + Math.abs(Number(w.amount)), 0) || 0
 
     return {
       totalPending,

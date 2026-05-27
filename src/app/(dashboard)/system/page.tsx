@@ -52,6 +52,8 @@ export default function SystemSettingsPage() {
       let systemTimezone = '(UTC+04:00) Abu Dhabi, Muscat'
       if (timezone === 'Europe/London') systemTimezone = '(UTC+00:00) London, Lisbon'
       else if (timezone === 'America/New_York') systemTimezone = '(UTC-05:00) Eastern Time (US & Canada)'
+      else if (timezone === 'Africa/Lagos') systemTimezone = '(UTC+01:00) West Africa Time (Lagos)'
+      else if (timezone === 'Africa/Cairo') systemTimezone = '(UTC+02:00) Central Africa Time'
 
       setFormData({
         default_language: primaryLang,
@@ -161,9 +163,31 @@ export default function SystemSettingsPage() {
                          <div>
                             <div className="flex items-center gap-2">
                                <span className="text-sm font-bold text-gray-900">{lang.name}</span>
-                               <Badge variant={lang.status === 'Primary' ? 'success' : lang.status === 'Draft' ? 'warning' : 'info'}>
-                                  {lang.status}
-                               </Badge>
+                                <select 
+                                   className={cn(
+                                     "text-[10px] font-black uppercase tracking-wider rounded-full px-2 py-0.5 border outline-none cursor-pointer",
+                                     lang.status === 'Primary' ? "bg-emerald-50 text-emerald-600 border-emerald-200" :
+                                     lang.status === 'Draft' ? "bg-amber-50 text-amber-600 border-amber-200" :
+                                     "bg-blue-50 text-blue-600 border-blue-200"
+                                   )}
+                                   value={lang.status}
+                                   onChange={(e) => {
+                                      const newStatus = e.target.value
+                                      if (newStatus === 'Primary') {
+                                         setFormData(prev => ({ ...prev, default_language: lang.code }))
+                                         setLanguages(languages.map(l => ({
+                                            ...l,
+                                            status: l.code === lang.code ? 'Primary' : (l.status === 'Primary' ? 'Published' : l.status)
+                                         })))
+                                      } else {
+                                         setLanguages(languages.map(l => l.code === lang.code ? { ...l, status: newStatus } : l))
+                                      }
+                                   }}
+                                >
+                                   <option value="Primary" disabled={lang.status !== 'Primary'}>Primary</option>
+                                   <option value="Published" disabled={lang.status === 'Primary'}>Published</option>
+                                   <option value="Draft" disabled={lang.status === 'Primary'}>Draft</option>
+                                </select>
                             </div>
                             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Localization Progress: {lang.progress}%</p>
                          </div>
@@ -224,7 +248,19 @@ export default function SystemSettingsPage() {
                        </Button>
                        <div className="flex items-center justify-between mb-4">
                           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{curr.code} ({curr.name})</span>
-                          <Badge variant={curr.enabled ? "info" : "warning"}>{curr.enabled ? 'Enabled' : 'Disabled'}</Badge>
+                          <button 
+                             type="button" 
+                             onClick={() => {
+                               setCurrencies(currencies.map(c => c.id === curr.id || c.code === curr.code ? { ...c, enabled: !c.enabled } : c))
+                             }}
+                          >
+                             <Badge 
+                               variant={curr.enabled ? "info" : "warning"}
+                               className="cursor-pointer hover:opacity-80 transition-all"
+                             >
+                                {curr.enabled ? 'Enabled' : 'Disabled'}
+                             </Badge>
+                          </button>
                        </div>
                        <div className="flex items-center justify-between">
                           <span className="text-xs text-gray-500">Ex. Rate</span>

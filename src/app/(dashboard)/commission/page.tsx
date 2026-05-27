@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { SettingsService } from '@/lib/services/settings-service'
 import { AdminService } from '@/lib/services/admin-service'
+import { PaymentService } from '@/lib/services/payment-service'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
@@ -30,15 +31,26 @@ export default function CommissionPage() {
   const loadData = async () => {
     try {
       setIsLoading(true)
-      const data = await SettingsService.getSettings()
+      const [data, payments] = await Promise.all([
+        SettingsService.getSettings(),
+        PaymentService.getPayments().catch(() => [])
+      ])
       
       const comm = data.find((s: any) => s.key === 'commission_rate')?.value || { percentage: 20, min_fee: 1.5 }
       const surge = data.find((s: any) => s.key === 'surge_rules')?.value || []
-      const strat = data.find((s: any) => s.key === 'pricing_strategy')?.value || { ai_enabled: true, target_margin: 15 }
+      const strat = data.find((s: any) => s.key === 'pricing_strategy')?.value || { ai_enabled: true, target_margin: 15, max_multiplier: 2.5 }
+      if (strat.max_multiplier === undefined) strat.max_multiplier = 2.5
       
       setCommission(comm)
       setSurgeRules(Array.isArray(surge) ? surge : JSON.parse(surge as any))
       setStrategy(strat)
+
+      // Calculate dynamic ARPU
+      const capturedPayments = payments.filter((p: any) => p.status === 'captured')
+      const totalVolume = capturedPayments.reduce((acc: number, p: any) => acc + Number(p.amount), 0)
+      const uniqueRiders = new Set(capturedPayments.map((p: any) => p.rider_id)).size
+      const calculatedArpu = uniqueRiders > 0 ? (totalVolume / uniqueRiders) : 42.10
+      setArpu(calculatedArpu)
     } catch (error) {
       console.error('Failed to load pricing data:', error)
     } finally {
@@ -47,7 +59,8 @@ export default function CommissionPage() {
   }
 
   const [surgeRules, setSurgeRules] = useState<any[]>([])
-  const [strategy, setStrategy] = useState({ ai_enabled: true, target_margin: 15 })
+  const [strategy, setStrategy] = useState({ ai_enabled: true, target_margin: 15, max_multiplier: 2.5 })
+  const [arpu, setArpu] = useState<number>(42.10)
 
   useEffect(() => {
     loadData()
@@ -264,7 +277,7 @@ export default function CommissionPage() {
                <div className="space-y-4">
                   <div className="p-4 bg-white/50 rounded-xl border border-emerald-100">
                      <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Projected ARPU</p>
-                     <p className="text-2xl font-black italic text-emerald-900">$42.10</p>
+                     <p className="text-2xl font-black italic text-emerald-900">${arpu.toFixed(2)}</p>
                   </div>
                   <div className="p-4 bg-white/50 rounded-xl border border-emerald-100">
                      <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Driver Payout Ratio</p>
@@ -278,9 +291,24 @@ export default function CommissionPage() {
                   <AlertCircle className="w-4 h-4 text-amber-500" />
                   <h4 className="text-sm font-bold text-amber-900 uppercase tracking-tighter">Guardrails Active</h4>
                </div>
-               <p className="text-xs text-amber-700 leading-relaxed italic font-medium">
-                  The AI pricing engine is restricted from exceeding a 2.5x multiplier to prevent extreme price shocks to riders.
-               </p>
+               <div className="space-y-4">
+                  <p className="text-xs text-amber-700 leading-relaxed italic font-medium">
+                     The AI pricing engine is restricted from exceeding the maximum price multiplier to prevent extreme price shocks to riders.
+                  </p>
+                  <div className="flex items-center justify-between bg-white/60 p-3 rounded-xl border border-amber-100">
+                     <span className="text-[10px] font-black text-amber-800 uppercase tracking-widest">Max Multiplier</span>
+                     <div className="flex items-center gap-1.5">
+                        <Input 
+                           type="number"
+                           step="0.1"
+                           className="w-16 h-8 p-1 text-center font-bold bg-white border-amber-200 text-xs text-amber-900 focus:border-amber-500" 
+                           value={strategy.max_multiplier} 
+                           onChange={(e) => setStrategy(prev => ({ ...prev, max_multiplier: Number(e.target.value) }))}
+                        />
+                        <span className="text-xs font-bold text-amber-800">x</span>
+                     </div>
+                  </div>
+               </div>
             </Card>
          </div>
       </div>

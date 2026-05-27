@@ -20,6 +20,7 @@ export default function CouponsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [hasLoadedSettings, setHasLoadedSettings] = useState(false)
 
   const { data: coupons = [], isLoading: isLoadingCoupons } = useQuery({
     queryKey: ['coupons'],
@@ -61,13 +62,16 @@ export default function CouponsPage() {
 
   // Populate referral form values once settings are loaded
   useEffect(() => {
-    const referralConfig = settings.find((s: any) => s.key === 'referral_program')?.value || { rules: [{ name: 'Default Rule', referrer_reward: 10, friend_reward: 5 }] }
-    if (referralConfig.rules) {
-      setRefValue('rules', referralConfig.rules)
-    } else {
-      setRefValue('rules', [{ name: 'Legacy Rule', referrer_reward: referralConfig.referrer_discount || 10, friend_reward: referralConfig.friend_reward || 5 }])
+    if (settings.length > 0 && !hasLoadedSettings) {
+      const referralConfig = settings.find((s: any) => s.key === 'referral_program')?.value || { rules: [{ name: 'Default Rule', referrer_reward: 10, friend_reward: 5 }] }
+      if (referralConfig.rules) {
+        setRefValue('rules', referralConfig.rules)
+      } else {
+        setRefValue('rules', [{ name: 'Legacy Rule', referrer_reward: referralConfig.referrer_discount || 10, friend_reward: referralConfig.friend_reward || 5 }])
+      }
+      setHasLoadedSettings(true)
     }
-  }, [settings, setRefValue])
+  }, [settings, setRefValue, hasLoadedSettings])
 
   const createCouponMutation = useMutation({
     mutationFn: (data: CouponFormData) => CouponService.createCoupon({

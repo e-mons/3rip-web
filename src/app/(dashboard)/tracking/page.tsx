@@ -7,11 +7,13 @@ import { Card, Badge, Modal, ConfirmModal } from '@/components/ui'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useLiveTrips, useLiveRideTracking } from '@/hooks/use-realtime'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Booking, Driver } from '@/lib/types'
 import { BookingService } from '@/lib/services/booking-service'
+import { SupportService } from '@/lib/services/support-service'
 import MapboxMap from '@/components/shared/MapboxMap'
+import Link from 'next/link'
 
 // Dubai Center for relative positioning
 const MAP_CENTER = { lat: 25.2048, lng: 55.2708 }
@@ -23,6 +25,16 @@ export default function TrackingPage() {
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null)
   const [isTerminateModalOpen, setIsTerminateModalOpen] = useState(false)
   const [tripToTerminate, setTripToTerminate] = useState<string | null>(null)
+
+  const { data: tickets = [] } = useQuery({
+    queryKey: ['support-tickets'],
+    queryFn: () => SupportService.getTickets()
+  })
+
+  const activeEmergencies = tickets.filter(t => 
+    ['open', 'in_progress'].includes(t.status) && 
+    ['high', 'urgent'].includes(t.priority?.toLowerCase())
+  ).length
 
   const cancelMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -225,21 +237,23 @@ export default function TrackingPage() {
               </div>
               <div>
                  <h4 className="text-sm font-bold text-red-600">SOS Alerts</h4>
-                 <p className="text-[10px] text-red-400 font-bold uppercase tracking-widest">0 Active Emergencies</p>
+                 <p className="text-[10px] text-red-400 font-bold uppercase tracking-widest">{activeEmergencies} Active Emergencies</p>
               </div>
            </div>
-           <Button 
-              variant="danger" 
-              className="w-full text-xs h-10 font-black italic tracking-widest shadow-lg shadow-red-200"
-              onClick={() => {
-                toast.error("EMERGENCY CONSOLE ACTIVATED", {
-                  description: "Global monitoring priority set to MAXIMUM. Security teams notified.",
-                  duration: 10000
-                })
-              }}
-            >
-              OPEN EMERGENCY CONSOLE
-            </Button>
+           <Link href="/support" className="w-full block">
+             <Button 
+                variant="danger" 
+                className="w-full text-xs h-10 font-black italic tracking-widest shadow-lg shadow-red-200"
+                onClick={() => {
+                  toast.error("EMERGENCY CONSOLE ACTIVATED", {
+                    description: "Global monitoring priority set to MAXIMUM. Redirecting to Security Support Tickets.",
+                    duration: 5000
+                  })
+                }}
+              >
+                OPEN EMERGENCY CONSOLE
+              </Button>
+           </Link>
         </Card>
       </div>
 

@@ -13,18 +13,54 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { supportTicketReplySchema, SupportTicketReplyFormData } from '@/lib/validations'
 import { toast } from 'sonner'
+import { supabase } from '@/lib/supabase'
+
+const CANNED_TEMPLATES = [
+  {
+    title: "Greeting & Help",
+    text: "Hello! Thank you for reaching out to 3rip support. How can I assist you with your concern today?"
+  },
+  {
+    title: "Refund Processing",
+    text: "We have processed a refund for your booking. It should reflect in your bank account or wallet within 3-5 business days depending on your financial institution."
+  },
+  {
+    title: "Waived Fee",
+    text: "We apologize for the inconvenience. We have waived the cancellation fee for your ride. The adjusted amount will show in your transaction history shortly."
+  },
+  {
+    title: "Driver Investigation",
+    text: "Thank you for sharing your feedback. We take user experience very seriously. We have flagged this driver and initiated an internal investigation into the behavior reported."
+  },
+  {
+    title: "Request Details",
+    text: "To help us investigate this issue further, could you please provide more details, screenshots, or any screenshots of the payment confirmation?"
+  }
+]
 
 export default function SupportTicketsPage() {
   const queryClient = useQueryClient()
   const [selectedTicket, setSelectedTicket] = useState<any>(null)
   const [filter, setFilter] = useState('All')
   const [searchTerm, setSearchTerm] = useState('')
+  const [isTemplatesOpen, setIsTemplatesOpen] = useState(false)
+  const [isActionsOpen, setIsActionsOpen] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const { data: tickets = [], isLoading } = useQuery({
     queryKey: ['support_tickets'],
     queryFn: () => SupportService.getTickets()
   })
+
+  const { data: currentUser } = useQuery({
+    queryKey: ['current_user'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      return user
+    }
+  })
+
+  const activeTicket = tickets.find((t: any) => t.id === selectedTicket?.id) || selectedTicket
 
   // Auto-select first ticket if none selected and tickets exist
   useEffect(() => {
@@ -41,7 +77,7 @@ export default function SupportTicketsPage() {
     }
   }, [realtimeMessages, selectedTicket])
 
-  const { register, handleSubmit, reset, formState: { errors, isValid } } = useForm<SupportTicketReplyFormData>({
+  const { register, handleSubmit, reset, setValue, formState: { errors, isValid } } = useForm<SupportTicketReplyFormData>({
     resolver: zodResolver(supportTicketReplySchema) as any,
     defaultValues: { content: '' }
   })
@@ -68,13 +104,55 @@ export default function SupportTicketsPage() {
     }
   })
 
+  const priorityMutation = useMutation({
+    mutationFn: ({ ticketId, priority }: { ticketId: string, priority: string }) => 
+      SupportService.changePriority(ticketId, priority),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['support_tickets'] })
+      toast.success('Ticket priority updated')
+      setIsActionsOpen(false)
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update priority')
+    }
+  })
+
+  const assignMutation = useMutation({
+    mutationFn: ({ ticketId, adminId }: { ticketId: string, adminId: string | null }) => 
+      SupportService.assignTicket(ticketId, adminId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['support_tickets'] })
+      toast.success('Ticket assignment updated')
+      setIsActionsOpen(false)
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to assign ticket')
+    }
+  })
+
+  const statusMutation = useMutation({
+    mutationFn: ({ ticketId, status }: { ticketId: string, status: string }) => 
+      SupportService.updateStatus(ticketId, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['support_tickets'] })
+      toast.success('Ticket status updated')
+      setIsActionsOpen(false)
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update status')
+    }
+  })
+
   const onSubmit = (data: SupportTicketReplyFormData) => {
     if (!selectedTicket) return
     replyMutation.mutate(data)
   }
 
   const filteredTickets = tickets.filter(t => {
-    const matchesFilter = filter === 'All' || t.status.toLowerCase() === filter.toLowerCase().replace(' ', '_')
+    const matchesFilter = filter === 'All' || 
+                          (filter === 'Closed' 
+                            ? (t.status === 'closed' || t.status === 'resolved')
+                            : t.status.toLowerCase() === filter.toLowerCase().replace(' ', '_'))
     const matchesSearch = t.subject.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           (t.user?.first_name || '').toLowerCase().includes(searchTerm.toLowerCase())
     return matchesFilter && matchesSearch
@@ -173,7 +251,7 @@ export default function SupportTicketsPage() {
 
       {/* Ticket Conversation View */}
       <Card className="flex-1 flex flex-col bg-white border-black/5 overflow-hidden relative">
-         {!selectedTicket ? (
+         {!activeTicket ? (
            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-gray-50/50">
              <div className="w-16 h-16 rounded-[24px] bg-gray-100 flex items-center justify-center mb-4 text-gray-300">
                <Inbox className="w-8 h-8" />
@@ -187,29 +265,106 @@ export default function SupportTicketsPage() {
               <div className="p-6 border-b border-black/5 flex items-center justify-between bg-gray-50">
                  <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center font-bold text-primary text-xl italic uppercase">
-                       {selectedTicket.user?.first_name?.charAt(0) || 'U'}
+                       {activeTicket.user?.first_name?.charAt(0) || 'U'}
                     </div>
                     <div>
-                       <h3 className="text-lg font-bold text-gray-900">{selectedTicket.subject}</h3>
+                       <h3 className="text-lg font-bold text-gray-900">{activeTicket.subject}</h3>
                        <div className="flex items-center gap-3 mt-0.5">
-                          <span className="text-xs text-gray-500">From: <span className="text-gray-900 font-bold">{selectedTicket.user?.first_name} {selectedTicket.user?.last_name}</span></span>
+                          <span className="text-xs text-gray-500">From: <span className="text-gray-900 font-bold">{activeTicket.user?.first_name} {activeTicket.user?.last_name}</span></span>
                           <div className="w-1 h-1 rounded-full bg-gray-200" />
-                          <Badge variant={selectedTicket.status === 'closed' ? 'success' : 'info'} className="capitalize">{selectedTicket.status.replace('_', ' ')}</Badge>
+                          <Badge variant={activeTicket.status === 'closed' || activeTicket.status === 'resolved' ? 'success' : 'info'} className="capitalize">{activeTicket.status.replace('_', ' ')}</Badge>
                        </div>
                     </div>
                  </div>
-                 <div className="flex items-center gap-2">
-                    {selectedTicket.status !== 'closed' && (
+                 <div className="flex items-center gap-2 relative">
+                    {activeTicket.status !== 'closed' && activeTicket.status !== 'resolved' && (
                       <Button 
                         variant="secondary" 
                         size="sm" 
-                        onClick={() => resolveMutation.mutate(selectedTicket.id)}
+                        onClick={() => resolveMutation.mutate(activeTicket.id)}
                         disabled={resolveMutation.isPending}
                       >
                         {resolveMutation.isPending ? 'Resolving...' : 'Resolve'}
                       </Button>
                     )}
-                    <Button variant="ghost" size="icon" className="text-gray-400 hover:text-gray-900"><MoreHorizontal className="w-5 h-5" /></Button>
+                    
+                    <div className="relative">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => setIsActionsOpen(!isActionsOpen)}
+                        className={cn("text-gray-400 hover:text-gray-900", isActionsOpen && "text-gray-900 bg-gray-100")}
+                      >
+                        <MoreHorizontal className="w-5 h-5" />
+                      </Button>
+                      
+                      {isActionsOpen && (
+                        <div className="absolute right-0 top-12 w-56 bg-white border border-black/10 rounded-2xl shadow-2xl p-2 z-50 text-left">
+                          <div className="space-y-1">
+                            {/* Assignment Action */}
+                            {activeTicket.assigned_to !== currentUser?.id ? (
+                              <button
+                                type="button"
+                                onClick={() => assignMutation.mutate({ ticketId: activeTicket.id, adminId: currentUser?.id || null })}
+                                disabled={assignMutation.isPending || !currentUser}
+                                className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
+                              >
+                                Assign to Me
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => assignMutation.mutate({ ticketId: activeTicket.id, adminId: null })}
+                                disabled={assignMutation.isPending}
+                                className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
+                              >
+                                Unassign Me
+                              </button>
+                            )}
+                            
+                            <div className="h-[1px] bg-black/5 my-1" />
+                            
+                            {/* Status Actions */}
+                            <div className="px-3 py-1 text-[9px] font-black uppercase tracking-wider text-gray-400">Status</div>
+                            {['open', 'in_progress', 'resolved', 'closed'].map((statusOption) => (
+                              <button
+                                key={statusOption}
+                                type="button"
+                                onClick={() => statusMutation.mutate({ ticketId: activeTicket.id, status: statusOption })}
+                                disabled={statusMutation.isPending || activeTicket.status === statusOption}
+                                className={cn(
+                                  "w-full text-left px-3 py-1.5 rounded-xl text-xs font-bold capitalize flex items-center justify-between transition-colors",
+                                  activeTicket.status === statusOption ? "text-primary bg-primary/5" : "text-gray-700 hover:bg-gray-50"
+                                )}
+                              >
+                                <span>{statusOption.replace('_', ' ')}</span>
+                                {activeTicket.status === statusOption && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                              </button>
+                            ))}
+                            
+                            <div className="h-[1px] bg-black/5 my-1" />
+                            
+                            {/* Priority Actions */}
+                            <div className="px-3 py-1 text-[9px] font-black uppercase tracking-wider text-gray-400">Priority</div>
+                            {['low', 'medium', 'high', 'urgent'].map((priorityOption) => (
+                              <button
+                                key={priorityOption}
+                                type="button"
+                                onClick={() => priorityMutation.mutate({ ticketId: activeTicket.id, priority: priorityOption })}
+                                disabled={priorityMutation.isPending || activeTicket.priority === priorityOption}
+                                className={cn(
+                                  "w-full text-left px-3 py-1.5 rounded-xl text-xs font-bold capitalize flex items-center justify-between transition-colors",
+                                  activeTicket.priority === priorityOption ? "text-primary bg-primary/5" : "text-gray-700 hover:bg-gray-50"
+                                )}
+                              >
+                                <span>{priorityOption}</span>
+                                {activeTicket.priority === priorityOption && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                  </div>
               </div>
 
@@ -226,10 +381,10 @@ export default function SupportTicketsPage() {
                      <div className="space-y-2">
                         <div className="bg-gray-50 p-4 rounded-2xl rounded-tl-none border border-black/5 shadow-sm">
                            <p className="text-sm text-gray-700 leading-relaxed">
-                              {selectedTicket.description}
+                              {activeTicket.description}
                            </p>
                         </div>
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">{new Date(selectedTicket.created_at).toLocaleString()}</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">{new Date(activeTicket.created_at).toLocaleString()}</span>
                      </div>
                   </div>
 
@@ -257,7 +412,7 @@ export default function SupportTicketsPage() {
                         {...register('content')}
                         placeholder="Type your response here..." 
                         className="w-full bg-transparent border-none outline-none text-sm text-gray-900 p-4 min-h-[100px] resize-none placeholder:text-gray-300"
-                        disabled={selectedTicket.status === 'closed'}
+                        disabled={activeTicket.status === 'closed' || activeTicket.status === 'resolved'}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault();
@@ -266,15 +421,47 @@ export default function SupportTicketsPage() {
                         }}
                      />
                      <div className="flex items-center justify-between p-2 border-t border-black/5">
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 relative">
                            <Button type="button" variant="ghost" size="icon" className="w-10 h-10 rounded-xl text-gray-400 hover:text-gray-900"><Paperclip className="w-5 h-5" /></Button>
-                           <Button type="button" variant="ghost" size="icon" className="w-10 h-10 rounded-xl text-gray-400 hover:text-gray-900"><MessageSquare className="w-5 h-5" /></Button>
+                           <div className="relative">
+                              <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => setIsTemplatesOpen(!isTemplatesOpen)}
+                                className={cn("w-10 h-10 rounded-xl text-gray-400 hover:text-gray-900", isTemplatesOpen && "text-primary bg-primary/10")}
+                              >
+                                 <MessageSquare className="w-5 h-5" />
+                              </Button>
+                              
+                              {isTemplatesOpen && (
+                                <div className="absolute bottom-12 left-0 w-80 bg-white border border-black/10 rounded-2xl shadow-2xl p-4 z-50 text-left">
+                                  <h5 className="text-xs font-bold text-gray-900 mb-3 uppercase tracking-wider">Canned Templates</h5>
+                                  <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                                    {CANNED_TEMPLATES.map((tmpl, idx) => (
+                                      <button
+                                        key={idx}
+                                        type="button"
+                                        onClick={() => {
+                                          setValue('content', tmpl.text, { shouldValidate: true })
+                                          setIsTemplatesOpen(false)
+                                        }}
+                                        className="w-full text-left p-2 rounded-xl hover:bg-gray-50 border border-transparent hover:border-black/5 transition-all"
+                                      >
+                                        <p className="text-xs font-bold text-gray-900 mb-0.5">{tmpl.title}</p>
+                                        <p className="text-[10px] text-gray-500 line-clamp-1">{tmpl.text}</p>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                           </div>
                         </div>
                         <Button 
                           type="submit"
                           size="sm" 
                           className="h-10 px-6 italic font-black tracking-widest shadow-lg shadow-primary/20"
-                          disabled={replyMutation.isPending || !isValid || selectedTicket.status === 'closed'}
+                          disabled={replyMutation.isPending || !isValid || activeTicket.status === 'closed' || activeTicket.status === 'resolved'}
                         >
                            {replyMutation.isPending ? 'SENDING...' : 'SEND REPLY'} <Send className="w-4 h-4 ml-2" />
                         </Button>

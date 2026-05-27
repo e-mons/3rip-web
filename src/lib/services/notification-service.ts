@@ -63,5 +63,16 @@ export const NotificationService = {
     })
 
     return announcement
+  },
+
+  async deleteAnnouncement(id: string) {
+    const { error } = await supabaseAdmin
+      .from('system_announcements')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
+
+    await AdminService.logAction('DELETE', 'system_announcements', id, { action: 'delete_announcement' })
   }
 }

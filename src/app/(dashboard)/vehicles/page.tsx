@@ -19,6 +19,8 @@ export default function VehiclesPage() {
   const [typeFilter, setTypeFilter] = useState('All')
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [selectedVehicle, setSelectedVehicle] = useState<any>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   const { data: vehicles = [], isLoading } = useQuery({
     queryKey: ['vehicles'],
@@ -255,7 +257,17 @@ export default function VehiclesPage() {
                       </td>
                       <td className="px-8 py-5 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="icon" className="w-8 h-8 rounded-xl"><Eye className="w-4 h-4" /></Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="w-8 h-8 rounded-xl"
+                            onClick={() => {
+                              setSelectedVehicle(vehicle)
+                              setIsModalOpen(true)
+                            }}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
                           <Button 
                             variant="ghost" 
                             size="icon" 
@@ -381,6 +393,87 @@ export default function VehiclesPage() {
         title="Delete Vehicle"
         description="Are you sure you want to permanently remove this vehicle from the fleet? This action cannot be undone."
       />
+      {/* Vehicle Details Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Vehicle Details"
+      >
+        {selectedVehicle && (
+          <div className="space-y-6">
+            {selectedVehicle.image_url && (
+              <div className="w-full h-44 rounded-3xl overflow-hidden border border-black/5">
+                <img src={selectedVehicle.image_url} alt="Vehicle" className="w-full h-full object-cover" />
+              </div>
+            )}
+            <div className="flex items-center gap-6 p-4 bg-gray-50 rounded-3xl border border-black/5">
+              <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center text-primary">
+                <Car className="w-8 h-8" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">{selectedVehicle.make} {selectedVehicle.model}</h3>
+                <p className="text-xs text-gray-500 uppercase tracking-widest">{selectedVehicle.color} • {selectedVehicle.year}</p>
+                <div className="flex gap-2 mt-2">
+                  <Badge variant={selectedVehicle.status === 'active' ? 'success' : selectedVehicle.status === 'maintenance' ? 'warning' : 'danger'}>
+                    {selectedVehicle.status}
+                  </Badge>
+                  <Badge variant="default" className="capitalize">{selectedVehicle.type}</Badge>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 rounded-2xl bg-gray-50 border border-black/5">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Plate Number</p>
+                <p className="font-bold text-gray-900 font-mono text-sm">{selectedVehicle.plate_number}</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-gray-50 border border-black/5">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Passenger Capacity</p>
+                <p className="font-bold text-gray-900">{selectedVehicle.capacity || 4} Seats</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-gray-50 border border-black/5 col-span-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Assigned Driver</p>
+                {selectedVehicle.driver?.user ? (
+                  <div className="flex items-center gap-3 mt-1">
+                    <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center font-bold text-primary italic uppercase">
+                      {selectedVehicle.driver.user.first_name?.[0]}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">
+                        {selectedVehicle.driver.user.first_name} {selectedVehicle.driver.user.last_name}
+                      </p>
+                      <p className="text-[10px] text-gray-400">{selectedVehicle.driver.user.email}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="font-bold text-gray-500 italic mt-0.5">No driver currently assigned</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t border-black/5">
+              <Button 
+                variant="secondary" 
+                className="flex-1"
+                onClick={() => setIsModalOpen(false)}
+              >
+                Close Details
+              </Button>
+              <Button 
+                variant="secondary" 
+                className="text-red-500 hover:bg-red-50"
+                onClick={() => {
+                  setDeleteConfirmId(selectedVehicle.id)
+                  setIsModalOpen(false)
+                }}
+                disabled={deleteMutation.isPending}
+              >
+                Delete Vehicle
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

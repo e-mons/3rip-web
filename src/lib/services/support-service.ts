@@ -71,5 +71,47 @@ export const SupportService = {
     if (error) throw error
 
     await AdminService.logAction('UPDATE', 'support_tickets', ticketId, { action: 'resolve_ticket' })
+  },
+
+  async changePriority(ticketId: string, priority: string) {
+    const { error } = await supabaseAdmin
+      .from('support_tickets')
+      .update({ 
+        priority, 
+        updated_at: new Date().toISOString() 
+      })
+      .eq('id', ticketId)
+
+    if (error) throw error
+
+    await AdminService.logAction('UPDATE', 'support_tickets', ticketId, { action: 'change_priority', priority })
+  },
+
+  async assignTicket(ticketId: string, adminId: string | null) {
+    const { error } = await supabaseAdmin
+      .from('support_tickets')
+      .update({ 
+        assigned_to: adminId, 
+        updated_at: new Date().toISOString() 
+      })
+      .eq('id', ticketId)
+
+    if (error) throw error
+
+    await AdminService.logAction('UPDATE', 'support_tickets', ticketId, { action: 'assign_ticket', assigned_to: adminId })
+  },
+
+  async updateStatus(ticketId: string, status: string) {
+    const { error } = await supabaseAdmin
+      .from('support_tickets')
+      .update({ 
+        status, 
+        updated_at: new Date().toISOString() 
+      })
+      .eq('id', ticketId)
+
+    if (error) throw error
+
+    await AdminService.logAction('UPDATE', 'support_tickets', ticketId, { action: 'update_status', status })
   }
 }

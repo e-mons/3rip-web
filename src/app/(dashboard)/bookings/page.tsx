@@ -25,6 +25,8 @@ export default function BookingsPage() {
   const [statusFilter, setStatusFilter] = useState('All')
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null)
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
   
   const { bookings: realtimeBookings } = useBookingUpdates()
 
@@ -274,9 +276,8 @@ export default function BookingsPage() {
                                   size="sm" 
                                   className="h-8 text-xs"
                                   onClick={() => {
-                                    toast.info(`Booking Audit`, {
-                                      description: `Trip ${booking.id.split('-')[0].toUpperCase()} is currently in state: ${booking.status.toUpperCase()}.`
-                                    })
+                                    setSelectedBooking(booking)
+                                    setIsDetailsModalOpen(true)
                                   }}
                                 >
                                   Details
@@ -430,6 +431,104 @@ export default function BookingsPage() {
         confirmText="Cancel Ride"
         variant="danger"
       />
+      {/* Booking Details Modal */}
+      <Modal
+        isOpen={isDetailsModalOpen}
+        onClose={() => {
+          setIsDetailsModalOpen(false)
+          setSelectedBooking(null)
+        }}
+        title="Booking Details"
+      >
+        {selectedBooking && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-3xl border border-black/5">
+              <div>
+                <span className="text-[10px] font-mono font-bold text-primary italic uppercase">
+                  #{selectedBooking.id.split('-')[0].toUpperCase()}
+                </span>
+                <h3 className="text-sm font-black uppercase text-gray-500 mt-1">
+                  Type: {selectedBooking.type}
+                </h3>
+              </div>
+              <Badge variant={
+                selectedBooking.status === 'completed' ? 'success' : 
+                selectedBooking.status === 'searching' ? 'warning' :
+                selectedBooking.status === 'cancelled' ? 'danger' : 'info'
+              }>
+                {selectedBooking.status}
+              </Badge>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-primary mt-1.5 shrink-0 animate-pulse" />
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Pickup Address</p>
+                  <p className="text-sm font-bold text-gray-900">{selectedBooking.pickup_address}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500 mt-1.5 shrink-0" />
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Dropoff Address</p>
+                  <p className="text-sm font-bold text-gray-900">{selectedBooking.dropoff_address}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 rounded-2xl bg-gray-50 border border-black/5">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Rider</p>
+                <p className="font-bold text-gray-900">{selectedBooking.rider?.first_name} {selectedBooking.rider?.last_name}</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-gray-50 border border-black/5">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Driver</p>
+                <p className="font-bold text-gray-900">
+                  {selectedBooking.driver?.users ? `${selectedBooking.driver.users.first_name} ${selectedBooking.driver.users.last_name}` : 'Pending...'}
+                </p>
+              </div>
+              <div className="p-4 rounded-2xl bg-gray-50 border border-black/5">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Estimated Fare</p>
+                <p className="font-black text-emerald-600 italic text-lg">${selectedBooking.estimated_fare?.toLocaleString()}</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-gray-50 border border-black/5">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Booking Date</p>
+                <p className="font-bold text-gray-900">{new Date(selectedBooking.created_at).toLocaleString()}</p>
+              </div>
+            </div>
+
+            {selectedBooking.notes && (
+              <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-100/50">
+                <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-1">Rider Notes</p>
+                <p className="text-xs text-gray-700 italic font-medium">"{selectedBooking.notes}"</p>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-4 border-t border-black/5">
+              <Button 
+                variant="secondary" 
+                className="flex-1"
+                onClick={() => setIsDetailsModalOpen(false)}
+              >
+                Close Details
+              </Button>
+              {['searching', 'accepted', 'arrived', 'in_progress'].includes(selectedBooking.status) && (
+                <Button 
+                  variant="secondary" 
+                  className="flex-1 text-red-500 hover:bg-red-50"
+                  onClick={() => {
+                    handleCancel(selectedBooking.id)
+                    setIsDetailsModalOpen(false)
+                  }}
+                >
+                  Cancel Ride
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

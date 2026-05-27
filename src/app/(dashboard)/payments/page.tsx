@@ -3,17 +3,23 @@
 import React, { useEffect, useState } from 'react'
 import { CreditCard, Wallet, ArrowUpRight, ArrowDownLeft, Download, Search, Filter, MoreHorizontal, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, Badge, Input } from '@/components/ui'
+import { Card, Badge, Input, Modal } from '@/components/ui'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { PaymentService } from '@/lib/services/payment-service'
 import { SettingsService } from '@/lib/services/settings-service'
+import { toast } from 'sonner'
 
 export default function PaymentsPage() {
   const [payments, setPayments] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'captured' | 'refunded' | 'failed'>('all')
   const [commissionRate, setCommissionRate] = useState(0.2) // Default 20%
+  const [selectedPaymentForRefund, setSelectedPaymentForRefund] = useState<any | null>(null)
+  const [refundAmount, setRefundAmount] = useState<string>('')
+  const [refundReason, setRefundReason] = useState<string>('')
+  const [isRefundSubmitLoading, setIsRefundSubmitLoading] = useState(false)
 
   const loadData = async () => {
     try {
@@ -24,9 +30,13 @@ export default function PaymentsPage() {
       ])
       
       setPayments(paymentsData)
-      
-      const commSetting = settings.find((s: any) => s.key === 'platform_commission')
-      if (commSetting) setCommissionRate(Number(commSetting.value) / 100)
+      const commSetting = settings.find((s: any) => s.key === 'commission_rate')
+      if (commSetting && commSetting.value) {
+        const val = typeof commSetting.value === 'string' ? JSON.parse(commSetting.value) : commSetting.value
+        if (val && val.percentage !== undefined) {
+          setCommissionRate(Number(val.percentage) / 100)
+        }
+      }
     } catch (error) {
       console.error('Failed to load payments:', error)
     } finally {
@@ -82,10 +92,38 @@ export default function PaymentsPage() {
     document.body.removeChild(link)
   }
 
+  const initiateRefund = (payment: any) => {
+    setSelectedPaymentForRefund(payment)
+    setRefundAmount(payment.amount.toString())
+    setRefundReason('Rider cancellation / request')
+  }
+
+  const handleRefundSubmit = async () => {
+    if (!selectedPaymentForRefund) return
+    try {
+      setIsRefundSubmitLoading(true)
+      await PaymentService.refundPayment(
+        selectedPaymentForRefund.id, 
+        Number(refundAmount), 
+        refundReason
+      )
+      toast.success('Payment refunded successfully!')
+      setSelectedPaymentForRefund(null)
+      loadData()
+    } catch (error: any) {
+      console.error('Failed to refund payment:', error)
+      toast.error(error.message || 'Failed to refund payment.')
+    } finally {
+      setIsRefundSubmitLoading(false)
+    }
+  }
+
   const filteredPayments = payments.filter(p => {
-    const riderName = `${p.rider?.first_name} ${p.rider?.last_name}`.toLowerCase()
+    const matchesStatus = statusFilter === 'all' || p.status === statusFilter
+    const riderName = `${p.rider?.first_name || ''} ${p.rider?.last_name || ''}`.toLowerCase()
     const id = p.id.toLowerCase()
-    return riderName.includes(searchTerm.toLowerCase()) || id.includes(searchTerm.toLowerCase())
+    const matchesSearch = riderName.includes(searchTerm.toLowerCase()) || id.includes(searchTerm.toLowerCase())
+    return matchesStatus && matchesSearch
   })
 
   return (
@@ -100,7 +138,11 @@ export default function PaymentsPage() {
           <Button variant="secondary" size="sm" onClick={handleExportCSV}>
             <Download className="w-4 h-4 mr-2" /> Financial Report
           </Button>
-          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">
+          <Button 
+            size="sm" 
+            className="bg-emerald-600 hover:bg-emerald-700 font-bold uppercase tracking-widest text-[10px]"
+            onClick={() => window.open('https://dashboard.paystack.com/', '_blank')}
+          >
             <Wallet className="w-4 h-4 mr-2" /> View Paystack Dashboard
           </Button>
         </div>
@@ -146,20 +188,42 @@ export default function PaymentsPage() {
 
       {/* Transaction List */}
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-           <h3 className="text-lg font-bold text-gray-900">Recent Transactions</h3>
-           <div className="flex items-center gap-3 w-full md:w-auto">
-              <div className="relative flex-1 md:w-64">
-                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                 <Input 
-                   placeholder="Search rider or txn id..." 
-                   className="pl-10 h-10 bg-gray-50 border-black/5 rounded-xl text-xs"
-                   value={searchTerm}
-                   onChange={(e) => setSearchTerm(e.target.value)}
-                 />
-              </div>
-              <Button variant="secondary" size="sm" className="h-10 rounded-xl"><Filter className="w-4 h-4" /></Button>
-           </div>
+        <div className="flex flex-col gap-4 bg-white p-4 rounded-[32px] border border-black/5 shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+             <h3 className="text-lg font-bold text-gray-900">Recent Transactions</h3>
+             <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="relative flex-1 md:w-64">
+                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                   <Input 
+                     placeholder="Search rider or txn id..." 
+                     className="pl-10 h-10 bg-gray-50 border-black/5 rounded-xl text-xs"
+                     value={searchTerm}
+                     onChange={(e) => setSearchTerm(e.target.value)}
+                   />
+                </div>
+             </div>
+          </div>
+          
+          <div className="flex items-center gap-2 p-1 bg-gray-100 rounded-2xl border border-black/5 overflow-x-auto">
+             {[
+               { label: 'All', value: 'all' },
+               { label: 'Captured', value: 'captured' },
+               { label: 'Refunded', value: 'refunded' },
+               { label: 'Failed', value: 'failed' }
+             ].map(t => (
+               <button 
+                 key={t.value} 
+                 type="button"
+                 onClick={() => setStatusFilter(t.value as any)}
+                 className={cn(
+                   "py-2 px-4 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap", 
+                   t.value === statusFilter ? "bg-white shadow-sm text-gray-900" : "text-gray-400 hover:text-gray-600"
+                 )}
+               >
+                  {t.label}
+               </button>
+             ))}
+          </div>
         </div>
 
         <Card className="overflow-hidden border-black/5 min-h-[400px]">
@@ -230,7 +294,20 @@ export default function PaymentsPage() {
                                  </Badge>
                               </td>
                               <td className="px-8 py-5 text-right">
-                                 <Button variant="ghost" size="icon" className="w-8 h-8 rounded-xl"><MoreHorizontal className="w-4 h-4" /></Button>
+                                 {p.status === 'captured' ? (
+                                    <Button 
+                                       variant="secondary" 
+                                       size="sm" 
+                                       className="h-8 text-[10px] font-black tracking-widest uppercase hover:bg-red-50 hover:text-red-500 hover:border-red-200"
+                                       onClick={() => initiateRefund(p)}
+                                    >
+                                       Refund
+                                    </Button>
+                                 ) : (
+                                    <Button variant="ghost" size="icon" className="w-8 h-8 rounded-xl" disabled>
+                                       <MoreHorizontal className="w-4 h-4 text-gray-300" />
+                                    </Button>
+                                 )}
                               </td>
                            </motion.tr>
                         ))}
@@ -244,8 +321,62 @@ export default function PaymentsPage() {
                 )}
              </div>
            )}
-        </Card>
+         </Card>
       </div>
+
+      {/* Refund Modal */}
+      <Modal
+        isOpen={!!selectedPaymentForRefund}
+        onClose={() => setSelectedPaymentForRefund(null)}
+        title="Refund Transaction"
+      >
+        <div className="space-y-6">
+          <div className="p-4 bg-red-50 text-red-800 rounded-2xl border border-red-100 text-xs leading-relaxed italic">
+            You are about to refund transaction <strong className="font-mono font-bold">{selectedPaymentForRefund?.id.split('-')[0].toUpperCase()}</strong>. This will instantly initiate a payout back to the rider's bank account via Paystack and update the ledger. This action is irreversible.
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Refund Amount ($)</label>
+            <Input 
+              type="number"
+              step="0.01"
+              max={selectedPaymentForRefund?.amount}
+              className="bg-gray-50 border-black/5 font-black italic text-lg"
+              value={refundAmount}
+              onChange={(e) => setRefundAmount(e.target.value)}
+            />
+            <p className="text-[10px] text-gray-400">Maximum refundable amount is ${selectedPaymentForRefund?.amount}</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Reason for Refund</label>
+            <Input 
+              placeholder="e.g. Booking cancelled, rider double-charged"
+              className="bg-gray-50 border-black/5 font-bold"
+              value={refundReason}
+              onChange={(e) => setRefundReason(e.target.value)}
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <Button 
+              variant="secondary" 
+              className="flex-1 font-black italic tracking-widest uppercase"
+              onClick={() => setSelectedPaymentForRefund(null)}
+              disabled={isRefundSubmitLoading}
+            >
+              Cancel
+            </Button>
+            <Button 
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black italic tracking-widest uppercase"
+              onClick={handleRefundSubmit}
+              disabled={isRefundSubmitLoading || !refundAmount || Number(refundAmount) <= 0 || Number(refundAmount) > Number(selectedPaymentForRefund?.amount)}
+            >
+              {isRefundSubmitLoading ? 'Processing...' : 'Confirm Refund'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

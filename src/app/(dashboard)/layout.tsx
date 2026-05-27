@@ -72,7 +72,7 @@ export default function DashboardLayout({
         {activeNotification && (
           <Notification 
             title={activeNotification.title}
-            message={activeNotification.message}
+            message={activeNotification.body}
             type={activeNotification.type}
             onClose={() => setActiveNotification(null)}
           />

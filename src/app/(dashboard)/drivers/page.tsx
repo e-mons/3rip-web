@@ -23,6 +23,8 @@ export default function DriversPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
   
   const { drivers: onlineDrivers } = useLiveRideTracking()
 
@@ -310,9 +312,8 @@ export default function DriversPage() {
                         size="sm" 
                         className="h-9"
                         onClick={() => {
-                          toast.info(`Driver Audit: ${driver.user?.first_name}`, {
-                            description: "Reviewing performance logs and document validity..."
-                          })
+                          setSelectedDriver(driver)
+                          setIsModalOpen(true)
                         }}
                       >
                         Details
@@ -440,6 +441,108 @@ export default function DriversPage() {
         title="Delete Driver"
         description="Are you sure you want to permanently remove this driver from the platform? This will also delete their vehicle records."
       />
+      {/* Driver Details Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Driver Details"
+      >
+        {selectedDriver && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-6 p-4 bg-gray-50 rounded-3xl border border-black/5">
+              <div className="w-20 h-20 rounded-3xl bg-primary/20 flex items-center justify-center text-3xl font-black text-primary italic overflow-hidden">
+                {selectedDriver.user?.image_url ? (
+                  <img src={selectedDriver.user.image_url} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-2xl font-black text-primary italic uppercase">
+                    {selectedDriver.user?.first_name?.[0] || 'D'}
+                  </span>
+                )}
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">{selectedDriver.user?.first_name} {selectedDriver.user?.last_name}</h3>
+                <p className="text-sm text-gray-500">{selectedDriver.user?.email}</p>
+                <div className="flex gap-2 mt-2">
+                  <Badge variant={selectedDriver.status === 'active' || selectedDriver.status === 'verified' ? 'success' : selectedDriver.status === 'suspended' ? 'danger' : 'warning'}>
+                    {selectedDriver.status.replace('_', ' ')}
+                  </Badge>
+                  <Badge variant="default">Driver</Badge>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 rounded-2xl bg-gray-50 border border-black/5">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Phone Number</p>
+                <p className="font-bold text-gray-900">{selectedDriver.user?.phone_number || 'N/A'}</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-gray-50 border border-black/5">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">License Number</p>
+                <p className="font-bold text-gray-900">{selectedDriver.license_number || 'N/A'}</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-gray-50 border border-black/5">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Total Trips Completed</p>
+                <p className="font-bold text-gray-900">{selectedDriver.total_trips || 0}</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-gray-50 border border-black/5">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Member Since</p>
+                <p className="font-bold text-gray-900">{new Date(selectedDriver.created_at).toLocaleDateString()}</p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              {selectedDriver.status === 'pending_verification' && (
+                <Button 
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-500"
+                  onClick={() => {
+                    updateStatusMutation.mutate({ id: selectedDriver.id, status: 'active' })
+                    setIsModalOpen(false)
+                  }}
+                  disabled={updateStatusMutation.isPending}
+                >
+                  Approve
+                </Button>
+              )}
+              {(selectedDriver.status === 'active' || selectedDriver.status === 'verified') && (
+                <Button 
+                  variant="secondary" 
+                  className="flex-1 text-red-500 hover:bg-red-50"
+                  onClick={() => {
+                    updateStatusMutation.mutate({ id: selectedDriver.id, status: 'suspended' })
+                    setIsModalOpen(false)
+                  }}
+                  disabled={updateStatusMutation.isPending}
+                >
+                  Suspend
+                </Button>
+              )}
+              {selectedDriver.status === 'suspended' && (
+                <Button 
+                  className="flex-1 bg-primary"
+                  onClick={() => {
+                    updateStatusMutation.mutate({ id: selectedDriver.id, status: 'active' })
+                    setIsModalOpen(false)
+                  }}
+                  disabled={updateStatusMutation.isPending}
+                >
+                  Reactivate
+                </Button>
+              )}
+              <Button 
+                variant="secondary" 
+                className="text-red-500 hover:bg-red-50"
+                onClick={() => {
+                  setDeleteConfirmId(selectedDriver.id)
+                  setIsModalOpen(false)
+                }}
+                disabled={deleteMutation.isPending}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

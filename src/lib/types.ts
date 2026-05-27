@@ -64,6 +64,8 @@ export interface Booking {
   dropoff_address: string
   estimated_fare: number
   actual_fare?: number
+  notes?: string
+  scheduled_for?: string
   created_at: string
 }
 
@@ -117,7 +119,7 @@ export interface SupportTicket {
   user?: Partial<User>
   subject: string
   description: string
-  status: 'open' | 'in_progress' | 'closed'
+  status: 'open' | 'in_progress' | 'resolved' | 'closed'
   priority: 'low' | 'medium' | 'high' | 'urgent'
   created_at: string
 }

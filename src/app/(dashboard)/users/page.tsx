@@ -158,7 +158,6 @@ export default function UsersPage() {
             <option>All Status</option>
             <option>Active</option>
             <option>Blocked</option>
-            <option>Pending</option>
           </select>
         </div>
       </Card>

@@ -13,6 +13,8 @@ import { toast } from 'sonner'
 export default function DisputesPage() {
   const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'resolved'>('all')
+  const [expandedDisputeId, setExpandedDisputeId] = useState<string | null>(null)
   const [isVerdictModalOpen, setIsVerdictModalOpen] = useState(false)
   const [selectedDisputeId, setSelectedDisputeId] = useState<string | null>(null)
   const [verdictType, setVerdictType] = useState<'refunded' | 'upheld' | null>(null)
@@ -45,13 +47,58 @@ export default function DisputesPage() {
     }
   })
 
-  const filteredDisputes = disputes.filter(d => {
-    const riderName = `${d.rider?.first_name} ${d.rider?.last_name}`.toLowerCase()
-    const driverName = `${d.driver?.users?.first_name} ${d.driver?.users?.last_name}`.toLowerCase()
-    return riderName.includes(searchTerm.toLowerCase()) || 
-           driverName.includes(searchTerm.toLowerCase()) || 
-           d.id.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredDisputes = disputes.filter((d: any) => {
+    const matchesStatus = 
+      statusFilter === 'all' 
+        ? true 
+        : statusFilter === 'pending' 
+          ? (d.status === 'under_review' || d.status === 'action_required')
+          : d.status.startsWith('resolved')
+
+    const riderName = `${d.rider?.first_name || ''} ${d.rider?.last_name || ''}`.toLowerCase()
+    const driverName = `${d.driver?.users?.first_name || ''} ${d.driver?.users?.last_name || ''}`.toLowerCase()
+    const reasonText = (d.reason || '').toLowerCase()
+    const idText = d.id.toLowerCase()
+    
+    const matchesSearch = riderName.includes(searchTerm.toLowerCase()) || 
+                          driverName.includes(searchTerm.toLowerCase()) || 
+                          reasonText.includes(searchTerm.toLowerCase()) ||
+                          idText.includes(searchTerm.toLowerCase())
+                          
+    return matchesStatus && matchesSearch
   })
+
+  const exportToCSV = () => {
+    if (filteredDisputes.length === 0) {
+      toast.error('No disputes to export')
+      return
+    }
+    
+    const headers = ['Dispute ID', 'Status', 'Created At', 'Reason', 'Rider', 'Driver', 'Amount', 'Verdict', 'Verdict Notes']
+    const rows = filteredDisputes.map((d: any) => [
+      d.id,
+      d.status,
+      new Date(d.created_at).toLocaleString(),
+      d.reason || '',
+      `${d.rider?.first_name || ''} ${d.rider?.last_name || ''}`,
+      `${d.driver?.users?.first_name || ''} ${d.driver?.users?.last_name || ''}`,
+      d.disputed_amount,
+      d.verdict || '',
+      d.verdict_notes || ''
+    ])
+    
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [headers.join(','), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n')
+      
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    link.setAttribute("download", `disputes_export_${Date.now()}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    toast.success('CSV log exported successfully')
+  }
 
   const handleResolveClick = (id: string, verdict: 'refunded' | 'upheld') => {
     setSelectedDisputeId(id)
@@ -95,24 +142,46 @@ export default function DisputesPage() {
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-[32px] border border-black/5 shadow-sm">
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input 
-            placeholder="Search by ID, rider or driver..." 
-            className="pl-12 h-12"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      {/* Toolbar & Filter Tabs */}
+      <div className="flex flex-col gap-4 bg-white p-4 rounded-[32px] border border-black/5 shadow-sm">
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="relative w-full md:w-96">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input 
+              placeholder="Search by ID, rider or driver..." 
+              className="pl-12 h-12"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2 w-full md:w-auto">
+            <Button 
+              onClick={exportToCSV}
+              className="gap-2 h-12 px-6 rounded-2xl flex-1 md:flex-none bg-black text-white hover:bg-black/80 font-black uppercase tracking-widest text-[10px]"
+            >
+               Export Log
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2 w-full md:w-auto">
-          <Button variant="secondary" className="gap-2 h-12 px-6 rounded-2xl flex-1 md:flex-none">
-            <Filter className="w-4 h-4" /> Filter
-          </Button>
-          <Button className="gap-2 h-12 px-6 rounded-2xl flex-1 md:flex-none bg-black text-white hover:bg-black/80">
-             Export Log
-          </Button>
+        
+        <div className="flex items-center gap-2 p-1 bg-gray-100 rounded-2xl border border-black/5 overflow-x-auto">
+           {[
+             { label: 'All', value: 'all' },
+             { label: 'Pending & Review', value: 'pending' },
+             { label: 'Resolved', value: 'resolved' }
+           ].map(t => (
+             <button 
+               key={t.value} 
+               type="button"
+               onClick={() => setStatusFilter(t.value as any)}
+               className={cn(
+                 "py-2 px-4 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap", 
+                 t.value === statusFilter ? "bg-white shadow-sm text-gray-900" : "text-gray-400 hover:text-gray-600"
+               )}
+             >
+                {t.label}
+             </button>
+           ))}
         </div>
       </div>
 
@@ -125,29 +194,43 @@ export default function DisputesPage() {
           </div>
         ) : (
           <AnimatePresence>
-            {filteredDisputes.map((dispute, i) => (
+            {filteredDisputes.map((dispute: any, i) => (
               <motion.div
                 key={dispute.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
               >
-                <Card className="group hover:border-primary/20 transition-all overflow-visible">
+                <Card 
+                  className={cn(
+                    "group hover:border-primary/20 transition-all overflow-visible cursor-pointer",
+                    expandedDisputeId === dispute.id && "border-primary bg-primary/[0.01]"
+                  )}
+                  onClick={() => setExpandedDisputeId(expandedDisputeId === dispute.id ? null : dispute.id)}
+                >
                   <div className="p-6">
                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                         <div className="flex gap-6">
                            <div className={cn(
-                             "w-16 h-16 rounded-[24px] flex items-center justify-center shrink-0",
-                             dispute.status === 'under_review' ? "bg-amber-100 text-amber-600" : "bg-gray-100 text-gray-600"
+                             "w-16 h-16 rounded-[24px] flex items-center justify-center shrink-0 transition-colors",
+                             dispute.status === 'under_review' ? "bg-amber-100 text-amber-600" : 
+                             dispute.status === 'action_required' ? "bg-red-100 text-red-600" :
+                             dispute.status.startsWith('resolved') ? "bg-emerald-100 text-emerald-600" : "bg-gray-100 text-gray-600"
                            )}>
-                              {dispute.status === 'under_review' ? <Scale className="w-8 h-8" /> : <Gavel className="w-8 h-8" />}
+                              {dispute.status.startsWith('resolved') ? <CheckCircle2 className="w-8 h-8" /> :
+                               dispute.status === 'action_required' ? <AlertCircle className="w-8 h-8" /> :
+                               <Scale className="w-8 h-8" />}
                            </div>
                            <div>
                               <div className="flex items-center gap-3 mb-2">
                                 <span className="text-[10px] font-mono font-bold text-primary italic uppercase tracking-widest">
                                   #{dispute.id.split('-')[0].toUpperCase()}
                                 </span>
-                                <Badge variant={dispute.status === 'under_review' ? 'warning' : 'default'}>
+                                <Badge variant={
+                                  dispute.status === 'under_review' ? 'warning' :
+                                  dispute.status === 'action_required' ? 'danger' :
+                                  dispute.status.startsWith('resolved') ? 'success' : 'default'
+                                }>
                                   {dispute.status.replace('_', ' ')}
                                 </Badge>
                                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest flex items-center gap-1">
@@ -170,39 +253,148 @@ export default function DisputesPage() {
                            </div>
                         </div>
 
-                        <div className="flex items-center gap-8 w-full lg:w-auto">
+                        <div className="flex items-center gap-8 w-full lg:w-auto justify-between lg:justify-start">
                            <div className="text-right">
                               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Disputed Amount</p>
                               <div className="flex items-center justify-end gap-1 text-red-600">
-                                 <DollarSign className="w-4 h-4" />
-                                 <span className="text-xl font-black italic">{Number(dispute.disputed_amount).toFixed(2)}</span>
+                                  <DollarSign className="w-4 h-4" />
+                                  <span className="text-xl font-black italic">{Number(dispute.disputed_amount).toFixed(2)}</span>
                               </div>
                            </div>
                            <div className="flex gap-2">
-                              {dispute.status === 'under_review' ? (
+                              {!dispute.status.startsWith('resolved') ? (
                                 <>
                                   <Button 
                                     variant="secondary" 
                                     className="h-10 text-[10px] font-black uppercase tracking-widest"
-                                    onClick={() => handleResolveClick(dispute.id, 'upheld')}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleResolveClick(dispute.id, 'upheld');
+                                    }}
                                   >
                                     Upheld
                                   </Button>
                                   <Button 
                                     className="h-10 text-[10px] font-black uppercase tracking-widest"
-                                    onClick={() => handleResolveClick(dispute.id, 'refunded')}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleResolveClick(dispute.id, 'refunded');
+                                    }}
                                   >
                                     Refund
                                   </Button>
                                 </>
                               ) : (
-                                <Badge className="h-10 px-6 font-black uppercase tracking-widest opacity-50">
+                                <Badge variant="success" className="h-10 px-6 font-black uppercase tracking-widest opacity-80">
                                    RESOLVED
                                 </Badge>
                               )}
                            </div>
                         </div>
                      </div>
+
+                     {/* Expanded details timeline */}
+                     <AnimatePresence>
+                       {expandedDisputeId === dispute.id && (
+                         <motion.div
+                           initial={{ opacity: 0, height: 0 }}
+                           animate={{ opacity: 1, height: 'auto' }}
+                           exit={{ opacity: 0, height: 0 }}
+                           className="border-t border-black/5 mt-6 pt-6 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-hidden text-left"
+                           onClick={(e) => e.stopPropagation()}
+                         >
+                           <div className="space-y-4">
+                             <h4 className="text-xs font-black uppercase tracking-widest text-gray-400">Dispute Telemetry & Details</h4>
+                             <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-2xl border border-black/5">
+                               <div>
+                                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Booking Reference</span>
+                                 <span className="text-xs font-mono font-bold text-gray-700">
+                                   {dispute.booking_id ? `#${dispute.booking_id.split('-')[0].toUpperCase()}` : 'N/A'}
+                                 </span>
+                               </div>
+                               <div>
+                                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Dispute Category</span>
+                                 <span className="text-xs font-bold text-gray-700 capitalize">
+                                   {dispute.type ? dispute.type.replace('_', ' ') : 'General'}
+                                 </span>
+                               </div>
+                               <div className="col-span-2">
+                                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Reason / Details Filed</span>
+                                 <span className="text-xs text-gray-600 leading-relaxed">{dispute.reason}</span>
+                               </div>
+                             </div>
+                           </div>
+
+                           <div className="space-y-4">
+                             <h4 className="text-xs font-black uppercase tracking-widest text-gray-400">Status Timeline & Verdict</h4>
+                             <div className="bg-gray-50 p-4 rounded-2xl border border-black/5 space-y-4">
+                               {/* Timeline steps */}
+                               <div className="flex gap-4">
+                                 <div className="flex flex-col items-center">
+                                   <div className="w-5 h-5 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center text-[9px] font-bold text-primary shrink-0">1</div>
+                                   <div className="w-[2px] h-8 bg-primary/20" />
+                                 </div>
+                                 <div>
+                                   <span className="text-[10px] font-bold text-gray-900 block">Dispute Filed</span>
+                                   <span className="text-[9px] text-gray-400">{new Date(dispute.created_at).toLocaleString()}</span>
+                                 </div>
+                               </div>
+
+                               <div className="flex gap-4">
+                                 <div className="flex flex-col items-center">
+                                   <div className={cn(
+                                     "w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0",
+                                     dispute.status === 'under_review' || dispute.status.startsWith('resolved') 
+                                       ? "bg-amber-100 border border-amber-300 text-amber-600" 
+                                       : "bg-gray-100 border border-gray-200 text-gray-400"
+                                   )}>2</div>
+                                   <div className="w-[2px] h-8 bg-gray-200" />
+                                 </div>
+                                 <div>
+                                   <span className="text-[10px] font-bold text-gray-900 block">Under Arbitrator Review</span>
+                                   <span className="text-[9px] text-gray-400">
+                                     {dispute.status === 'under_review' || dispute.status.startsWith('resolved') ? "Reviewed" : "Pending review"}
+                                   </span>
+                                 </div>
+                               </div>
+
+                               <div className="flex gap-4">
+                                 <div className="flex flex-col items-center">
+                                   <div className={cn(
+                                     "w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0",
+                                     dispute.status.startsWith('resolved') 
+                                       ? "bg-emerald-100 border border-emerald-300 text-emerald-600" 
+                                       : "bg-gray-100 border border-gray-200 text-gray-400"
+                                   )}>3</div>
+                                 </div>
+                                 <div>
+                                   <span className="text-[10px] font-bold text-gray-900 block">Arbitration Resolved</span>
+                                   {dispute.status.startsWith('resolved') ? (
+                                     <div className="mt-1 space-y-1">
+                                       <span className="text-[9px] text-gray-400 block">
+                                         Resolved on: {dispute.resolved_at ? new Date(dispute.resolved_at).toLocaleString() : new Date(dispute.updated_at).toLocaleString()}
+                                       </span>
+                                       {dispute.verdict && (
+                                         <span className="inline-block px-1.5 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded text-[8px] font-black uppercase mt-1">
+                                           Verdict: {dispute.verdict}
+                                         </span>
+                                       )}
+                                       {dispute.verdict_notes && (
+                                         <p className="text-[11px] text-gray-600 bg-white border border-black/5 p-2 rounded-xl mt-1 italic">
+                                           "{dispute.verdict_notes}"
+                                         </p>
+                                       )}
+                                     </div>
+                                   ) : (
+                                     <span className="text-[9px] text-gray-400">Awaiting final decision</span>
+                                   )}
+                                 </div>
+                               </div>
+                             </div>
+                           </div>
+                         </motion.div>
+                       )}
+                     </AnimatePresence>
                   </div>
                 </Card>
               </motion.div>

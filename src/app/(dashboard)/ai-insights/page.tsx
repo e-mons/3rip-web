@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, Badge } from '@/components/ui'
 import { motion, AnimatePresence } from 'framer-motion'
 import { GeminiService, AISuggestion } from '@/lib/services/gemini-service'
+import { DriverService } from '@/lib/services/driver-service'
 import { cn } from '@/lib/utils'
 import MapboxMap from '@/components/shared/MapboxMap'
 import { useLiveTrips } from '@/hooks/use-realtime'
@@ -27,10 +28,26 @@ export default function AIInsightsPage() {
   const fetchAIInsights = async () => {
     setLoading(true)
     try {
+      const drivers = await DriverService.getDrivers()
+      
+      // Fetch active bookings directly to ensure fresh state
+      const { data: activeBookings } = await (await import('@/lib/supabase')).supabase
+        .from('bookings')
+        .select('*')
+        .in('status', ['accepted', 'arrived', 'in_progress'])
+      
+      const tripsArray = activeBookings || []
+      
+      // Compute dynamic metrics from live database state
+      const demandLevel = tripsArray.length > 5 ? 'high' : tripsArray.length > 1 ? 'medium' : 'low'
+      const activeRegion = tripsArray[0]?.pickup_address || 'Downtown Dubai'
+      const totalDist = tripsArray.reduce((acc, t) => acc + (t.distance_meters || 0), 0)
+      const avgDistance = tripsArray.length > 0 ? Math.round((totalDist / tripsArray.length / 1000) * 10) / 10 : 12.5
+
       const [pricing, demand, fleet] = await Promise.all([
-        GeminiService.getSmartPricing(12.5, 'high'),
-        GeminiService.getDemandPrediction('Downtown Dubai'),
-        GeminiService.optimizeDriverFleet([])
+        GeminiService.getSmartPricing(avgDistance > 0 ? avgDistance : 12.5, demandLevel),
+        GeminiService.getDemandPrediction(activeRegion),
+        GeminiService.optimizeDriverFleet(drivers)
       ])
       setInsights({ pricing, demand, fleet })
     } catch (e) {

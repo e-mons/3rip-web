@@ -22,20 +22,47 @@ export async function updateSettingAction(key: string, value: any, userId: strin
     }
   }
 
-  const { data, error } = await supabaseAdmin
+  // Check if setting exists
+  const { data: existingSetting } = await supabaseAdmin
     .from('system_settings')
-    .update({ 
-      value, 
-      updated_by: activeUserId,
-      updated_at: new Date().toISOString() 
-    })
+    .select('id')
     .eq('key', key)
-    .select()
-    .single()
+    .maybeSingle()
 
-  if (error) throw new Error(error.message)
+  let result;
+  if (existingSetting) {
+    const { data, error } = await supabaseAdmin
+      .from('system_settings')
+      .update({ 
+        value, 
+        updated_by: activeUserId,
+        updated_at: new Date().toISOString() 
+      })
+      .eq('key', key)
+      .select()
+      .single()
 
-  await logActionAction('UPDATE', 'system_settings', data.id, { key, value }, activeUserId)
+    if (error) throw new Error(error.message)
+    result = data
+  } else {
+    const { data, error } = await supabaseAdmin
+      .from('system_settings')
+      .insert({
+        key,
+        value,
+        category: 'finance',
+        description: 'Dynamic Configuration Setting',
+        updated_by: activeUserId,
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single()
+
+    if (error) throw new Error(error.message)
+    result = data
+  }
+
+  await logActionAction('UPDATE', 'system_settings', result.id, { key, value }, activeUserId)
   
-  return data
+  return result
 }

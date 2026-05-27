@@ -7,7 +7,7 @@ export const PaymentService = {
       .from('payments')
       .select(`
         *,
-        booking:bookings(*),
+        booking:bookings!payments_booking_id_fkey(*),
         rider:users(*)
       `)
       .order('created_at', { ascending: false })

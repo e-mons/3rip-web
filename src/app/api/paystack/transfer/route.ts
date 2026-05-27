@@ -5,8 +5,32 @@ import { supabaseAdmin } from '@/lib/supabase';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { amount, driverId, reason } = body;
+    const { amount, driverId, reason, recipientCode, reference } = body;
 
+    // Use Case B: Releasing funds for an existing transaction
+    if (recipientCode && reference) {
+      if (!amount) {
+        return NextResponse.json({ error: 'Missing amount' }, { status: 400 });
+      }
+
+      // Initiate Paystack transfer using existing transaction ID as reference
+      const data = await PaystackBackendService.initiateTransfer(
+        amount,
+        recipientCode,
+        reference,
+        reason || `Payout for transaction ${reference}`
+      );
+
+      // Update the transaction status in the database to 'processing'
+      await supabaseAdmin
+        .from('transactions')
+        .update({ status: 'processing' })
+        .eq('id', reference);
+
+      return NextResponse.json({ success: true, data });
+    }
+
+    // Use Case A: Creating and initiating a new transfer request
     if (!amount || !driverId) {
       return NextResponse.json({ error: 'Missing amount or driverId' }, { status: 400 });
     }
