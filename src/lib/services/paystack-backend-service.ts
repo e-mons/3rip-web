@@ -15,7 +15,7 @@ export const PaystackBackendService = {
         metadata,
         reference,
         callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/paystack/verify`,
-        currency: 'AED' // Assuming AED as per the UI
+        currency: 'NGN'
       });
       return response.data;
     } catch (error: any) {
@@ -47,7 +47,7 @@ export const PaystackBackendService = {
         name,
         account_number: accountNumber,
         bank_code: bankCode,
-        currency: 'AED'
+        currency: 'NGN'
       });
       return response.data;
     } catch (error: any) {

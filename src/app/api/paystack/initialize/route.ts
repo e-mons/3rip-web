@@ -28,7 +28,7 @@ export async function POST(request: Request) {
           booking_id: bookingId,
           rider_id: riderId,
           amount: amount,
-          currency: 'AED',
+          currency: 'NGN',
           status: 'pending',
           payment_method: 'paystack',
           paystack_reference: reference

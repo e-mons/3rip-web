@@ -583,7 +583,7 @@ export default function LandingPage() {
           transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
           className="flex items-center gap-12 text-white text-3xl font-black"
         >
-          {["USA", "Australia", "Dubai", "Canada", "India", "United Kingdom", "USA", "Australia", "Dubai", "Canada"].map((city, i) => (
+          {["USA", "Australia", "Lagos", "Canada", "India", "United Kingdom", "USA", "Australia", "Lagos", "Canada"].map((city, i) => (
             <div key={i} className="flex items-center gap-12">
               <span>{city}</span>
               {/* Outline star separator */}

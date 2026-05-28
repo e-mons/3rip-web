@@ -40,7 +40,7 @@ export default function AIInsightsPage() {
       
       // Compute dynamic metrics from live database state
       const demandLevel = tripsArray.length > 5 ? 'high' : tripsArray.length > 1 ? 'medium' : 'low'
-      const activeRegion = tripsArray[0]?.pickup_address || 'Downtown Dubai'
+      const activeRegion = tripsArray[0]?.pickup_address || 'Lagos Island'
       const totalDist = tripsArray.reduce((acc, t) => acc + (t.distance_meters || 0), 0)
       const avgDistance = tripsArray.length > 0 ? Math.round((totalDist / tripsArray.length / 1000) * 10) / 10 : 12.5
 
@@ -124,7 +124,7 @@ export default function AIInsightsPage() {
            </div>
         </div>
         <MapboxMap 
-          center={{ lat: 25.2048, lng: 55.2708 }}
+          center={{ lat: 6.5244, lng: 3.3792 }}
           trips={trips}
           onTripSelect={() => {}}
         />

@@ -83,7 +83,7 @@ export const BookingService = {
         driver_id: bookingData.driver_id || null,
         type: bookingData.type || 'ride',
         status: bookingData.status || 'searching',
-        pickup_location: bookingData.pickup_location || 'POINT(55.2708 25.2048)',
+        pickup_location: bookingData.pickup_location || 'POINT(3.3792 6.5244)',
         pickup_address: bookingData.pickup_address,
         dropoff_location: bookingData.dropoff_location || 'POINT(55.2797 25.2120)',
         dropoff_address: bookingData.dropoff_address,

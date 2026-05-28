@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     
     // Save the recipient code to the driver's profile
     const { error } = await supabaseAdmin
-      .from('users')
+      .from('drivers')
       .update({ paystack_recipient_code: data.recipient_code })
       .eq('id', userId);
 

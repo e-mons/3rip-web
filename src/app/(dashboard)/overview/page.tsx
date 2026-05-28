@@ -211,7 +211,7 @@ export default function DashboardPage() {
                     <Activity className="w-5 h-5 text-primary" />
                     Network Activity
                  </h3>
-                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Real-time trip distribution across Dubai</p>
+                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Real-time trip distribution across Lagos</p>
               </div>
               <Link href="/tracking">
                 <Button variant="secondary" size="sm">Go to Tracking</Button>
@@ -220,7 +220,7 @@ export default function DashboardPage() {
            
            <div className="flex-1 rounded-[32px] bg-gray-50 border border-black/5 relative overflow-hidden flex items-center justify-center">
               <MapboxMap 
-                center={{ lat: 25.2048, lng: 55.2708 }}
+                center={{ lat: 6.5244, lng: 3.3792 }}
                 trips={trips}
                 onTripSelect={() => {}}
               />

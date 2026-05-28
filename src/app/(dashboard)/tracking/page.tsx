@@ -15,8 +15,8 @@ import { SupportService } from '@/lib/services/support-service'
 import MapboxMap from '@/components/shared/MapboxMap'
 import Link from 'next/link'
 
-// Dubai Center for relative positioning
-const MAP_CENTER = { lat: 25.2048, lng: 55.2708 }
+// Lagos Center for relative positioning
+const MAP_CENTER = { lat: 6.5244, lng: 3.3792 }
 
 export default function TrackingPage() {
   const queryClient = useQueryClient()

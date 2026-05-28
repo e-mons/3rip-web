@@ -312,7 +312,7 @@ export default function BookingsPage() {
       ) : (
         <Card className="h-[600px] bg-gray-50 flex items-center justify-center border-black/5 relative overflow-hidden p-0">
           <MapboxMap 
-            center={{ lat: 25.2048, lng: 55.2708 }}
+            center={{ lat: 6.5244, lng: 3.3792 }}
             trips={allBookings.filter(b => ['searching', 'accepted', 'arrived', 'in_progress'].includes(b.status))}
             onTripSelect={() => {}}
           />

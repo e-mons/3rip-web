@@ -362,7 +362,7 @@ export default function CouponsPage() {
             <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Promo Code</label>
             <Input 
               {...register('code')}
-              placeholder="e.g. DUBAI2024" 
+              placeholder="e.g. LAGOS2024" 
               className={cn("bg-gray-50 font-black tracking-widest uppercase italic", errors.code ? "border-red-500" : "border-black/5")}
             />
             {errors.code && <p className="text-red-500 text-xs">{errors.code.message}</p>}

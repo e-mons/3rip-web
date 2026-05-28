@@ -16,8 +16,8 @@ export default function SystemSettingsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [formData, setFormData] = useState({
     default_language: 'en-US',
-    primary_currency: 'USD',
-    system_timezone: '(UTC+04:00) Abu Dhabi, Muscat'
+    primary_currency: 'NGN',
+    system_timezone: '(UTC+01:00) West Africa Time (Lagos)'
   })
   const [languages, setLanguages] = useState<any[]>([])
   const [currencies, setCurrencies] = useState<any[]>([])
@@ -34,25 +34,26 @@ export default function SystemSettingsPage() {
       const supportedLangsObj = data.find((s: any) => s.key === 'supported_languages')?.value
       const langsList = supportedLangsObj?.languages || [
         { id: '1', name: 'English (US)', code: 'en-US', status: 'Primary', progress: 100 },
-        { id: '2', name: 'Arabic (UAE)', code: 'ar-AE', status: 'Published', progress: 98 }
+        { id: '2', name: 'Yoruba (Nigeria)', code: 'yo-NG', status: 'Published', progress: 72 }
       ]
       
       const primaryLang = langsList.find((l: any) => l.status?.toLowerCase() === 'primary')?.code || 'en-US'
       
       const supportedCurrsObj = data.find((s: any) => s.key === 'supported_currencies')?.value
-      const primaryCurr = supportedCurrsObj?.primary || 'USD'
+      const primaryCurr = supportedCurrsObj?.primary || 'NGN'
       const currsList = supportedCurrsObj?.currencies || [
-        { id: '1', code: 'AED', name: 'Dirham', rate: 3.67, enabled: true },
-        { id: '2', code: 'EUR', name: 'Euro', rate: 0.92, enabled: true }
+        { id: '1', code: 'NGN', name: 'Naira', rate: 1, enabled: true },
+        { id: '2', code: 'USD', name: 'US Dollar', rate: 0.00065, enabled: true }
       ]
 
       const defaultTimezoneObj = data.find((s: any) => s.key === 'default_timezone')?.value
-      const timezone = defaultTimezoneObj?.timezone || 'Asia/Dubai'
+      const timezone = defaultTimezoneObj?.timezone || 'Africa/Lagos'
       
-      let systemTimezone = '(UTC+04:00) Abu Dhabi, Muscat'
+      let systemTimezone = '(UTC+01:00) West Africa Time (Lagos)'
       if (timezone === 'Europe/London') systemTimezone = '(UTC+00:00) London, Lisbon'
       else if (timezone === 'America/New_York') systemTimezone = '(UTC-05:00) Eastern Time (US & Canada)'
       else if (timezone === 'Africa/Lagos') systemTimezone = '(UTC+01:00) West Africa Time (Lagos)'
+      else if (timezone === 'Asia/Dubai') systemTimezone = '(UTC+04:00) Abu Dhabi, Muscat'
       else if (timezone === 'Africa/Cairo') systemTimezone = '(UTC+02:00) Central Africa Time'
 
       setFormData({
@@ -86,8 +87,8 @@ export default function SystemSettingsPage() {
         currencies: currencies
       }
 
-      let offset = '+04:00'
-      let timezone = 'Asia/Dubai'
+      let offset = '+01:00'
+      let timezone = 'Africa/Lagos'
       if (data.system_timezone.includes('London')) {
         offset = '+00:00'
         timezone = 'Europe/London'
