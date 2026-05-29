@@ -15,6 +15,7 @@ import HeroSlider from "../components/HeroSlider";
 
 export default function LandingPage() {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
+  const [isAnnual, setIsAnnual] = useState(false);
 
   const fadeUp = {
     initial: { opacity: 0, y: 30 },
@@ -188,9 +189,9 @@ export default function LandingPage() {
 
           <motion.div variants={staggerContainer} initial="initial" whileInView="whileInView" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8">
             {[
-              { icon: Car, title: "Ride Booking", desc: "Get comfortable rides in minutes. From budget to luxury, we've got you covered." },
-              { icon: Package, title: "Parcel Sending", desc: "Send packages across the city instantly with our secure door-to-door delivery." },
-              { icon: TrendingUp, title: "Freight Moving", desc: "Professional logistics and freight services for all your heavy moving needs." },
+              { icon: Car, title: "3rip Booking", desc: "Get comfortable rides in minutes. From budget to luxury, we've got you covered." },
+              { icon: Package, title: "Parcel & Deliveries", desc: "Send packages across the city instantly with our secure door-to-door delivery." },
+              { icon: TrendingUp, title: "Freight Solutions", desc: "Professional logistics and freight services for all your heavy moving needs." },
               { icon: Calendar, title: "Car Rentals", desc: "Rent a vehicle for hours or days with zero hassle, right through the app." },
             ].map((benefit, i) => (
               <motion.div key={i} variants={fadeUp} className="flex flex-col items-center group">
@@ -295,7 +296,7 @@ export default function LandingPage() {
       <section className="py-32 bg-white overflow-hidden relative">
         <div className="max-w-7xl mx-auto text-center mb-16 px-6">
           <div className="text-gray-400 font-bold text-sm uppercase tracking-widest mb-2"><span className="w-8 h-px bg-[var(--color-primary)] inline-block align-middle mr-2" />Sneak Peek</div>
-          <h2 className="text-4xl lg:text-5xl font-black tracking-tighter text-[#4B4B4B]">View Our <span className="text-[var(--color-primary)]">App Demo</span></h2>
+          <h2 className="text-4xl lg:text-5xl font-black tracking-tighter text-[#4B4B4B]">How <span className="text-[var(--color-primary)]">3rip Works</span></h2>
         </div>
 
         <div className="relative w-full h-[650px] flex justify-center items-center overflow-hidden">
@@ -449,8 +450,8 @@ export default function LandingPage() {
             {/* Toggle Switch */}
             <div className="flex items-center gap-6 text-[#212121] font-bold text-sm lg:text-base">
               <span>Bill Monthly</span>
-              <div className="w-16 h-8 bg-gray-100 rounded-full p-1 cursor-pointer flex justify-end items-center shadow-inner relative border border-gray-200">
-                <div className="w-6 h-6 bg-[var(--color-primary)] rounded-full shadow-md absolute right-1" />
+              <div onClick={() => setIsAnnual(!isAnnual)} className="w-16 h-8 bg-gray-100 rounded-full p-1 cursor-pointer flex justify-start items-center shadow-inner relative border border-gray-200">
+                <motion.div animate={{ left: isAnnual ? '32px' : '4px' }} className="w-6 h-6 bg-[var(--color-primary)] rounded-full shadow-md absolute" />
               </div>
               <span>Bill Annually</span>
             </div>
@@ -465,8 +466,8 @@ export default function LandingPage() {
               className="bg-white border border-gray-100 p-10 lg:p-12 rounded-[2rem] shadow-[0_10px_40px_-15px_rgba(0,0,0,0.1)] flex flex-col h-full"
             >
               <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-[2.5rem] font-black text-[#212121]">$29</span>
-                <span className="text-gray-500 font-medium">/month</span>
+                <span className="text-[2.5rem] font-black text-[#212121]">{isAnnual ? '₦290,000' : '₦29,000'}</span>
+                <span className="text-gray-500 font-medium">/{isAnnual ? 'year' : 'month'}</span>
               </div>
               <h3 className="text-[1.75rem] font-medium text-[#212121] mb-4">Basic</h3>
               <p className="text-gray-500 text-sm leading-relaxed mb-8">
@@ -504,8 +505,8 @@ export default function LandingPage() {
               className="bg-[var(--color-primary)] p-10 lg:p-12 rounded-[2rem] shadow-[0_20px_50px_-15px_rgba(0,169,164,0.5)] flex flex-col h-full relative z-10"
             >
               <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-[2.5rem] font-black text-white">$49</span>
-                <span className="text-white/90 font-medium">/month</span>
+                <span className="text-[2.5rem] font-black text-white">{isAnnual ? '₦490,000' : '₦49,000'}</span>
+                <span className="text-white/90 font-medium">/{isAnnual ? 'year' : 'month'}</span>
               </div>
               <h3 className="text-[1.75rem] font-medium text-white mb-4">Standard</h3>
               <p className="text-white/90 text-sm leading-relaxed mb-8">
@@ -543,8 +544,8 @@ export default function LandingPage() {
               className="bg-white border border-gray-100 p-10 lg:p-12 rounded-[2rem] shadow-[0_10px_40px_-15px_rgba(0,0,0,0.1)] flex flex-col h-full"
             >
               <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-[2.5rem] font-black text-[#212121]">$99</span>
-                <span className="text-gray-500 font-medium">/month</span>
+                <span className="text-[2.5rem] font-black text-[#212121]">{isAnnual ? '₦990,000' : '₦99,000'}</span>
+                <span className="text-gray-500 font-medium">/{isAnnual ? 'year' : 'month'}</span>
               </div>
               <h3 className="text-[1.75rem] font-medium text-[#212121] mb-4">Premium</h3>
               <p className="text-gray-500 text-sm leading-relaxed mb-8">
@@ -885,7 +886,7 @@ export default function LandingPage() {
                 <div className="w-12 h-12 rounded-full bg-[var(--color-primary)] flex items-center justify-center shadow-lg shadow-[var(--color-primary)]/20">
                   <Car size={24} className="text-white" fill="currentColor" />
                 </div>
-                <span className="text-2xl font-bold tracking-tight">3rip Mobility</span>
+                <span className="text-2xl font-bold tracking-tight">3rip Booking</span>
               </div>
               <p className="text-gray-400 text-[15px] leading-relaxed mb-10 max-w-sm font-medium">
                 The world's leading mobility platform, revolutionizing how people and goods move across cities with AI-driven efficiency.
@@ -944,8 +945,9 @@ export default function LandingPage() {
                   { name: "Home", href: "/" },
                   { name: "Features", href: "#features" },
                   { name: "Services", href: "/ride" },
+                  { name: "Careers", href: "#" },
                   { name: "About Us", href: "/about" },
-                  { name: "Contact Us", href: "mailto:support@3rip.com" }
+                  { name: "Contact Us", href: "mailto:support@3rip.org" }
                 ].map((link) => (
                   <li key={link.name}>
                     <Link href={link.href} className="text-gray-400 text-[15px] font-medium hover:text-[var(--color-primary)] transition-colors">
@@ -961,20 +963,16 @@ export default function LandingPage() {
               <h4 className="text-lg font-bold mb-8">Contact</h4>
               <ul className="space-y-6">
                 <li className="flex items-center gap-4 text-gray-400 text-[15px] font-medium">
-                  <Phone size={18} className="text-[var(--color-primary)]" />
-                  (406) 555-0120
-                </li>
-                <li className="flex items-center gap-4 text-gray-400 text-[15px] font-medium">
                   <Globe size={18} className="text-[var(--color-primary)]" />
-                  www.3rip.com
+                  www.3rip.org
                 </li>
                 <li className="flex items-center gap-4 text-gray-400 text-[15px] font-medium">
                   <Mail size={18} className="text-[var(--color-primary)]" />
-                  support@3rip.com
+                  support@3rip.org
                 </li>
                 <li className="flex items-start gap-4 text-gray-400 text-[15px] font-medium">
                   <MapPin size={18} className="text-[var(--color-primary)] shrink-0" />
-                  <span>56, Wuse 2, Abuja, Nigeria</span>
+                  <span>Suite 18 Broadway Mall Kaura District Abuja</span>
                 </li>
               </ul>
             </div>
@@ -998,7 +996,7 @@ export default function LandingPage() {
           {/* Bottom Bar */}
           <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
             <p className="text-gray-500 text-sm font-medium">
-              Copyright © 2026 3rip Mobility. All Rights Reserved.
+              Copyright © 2026 3rip Booking. Powered by 3rip Technologies Ltd.
             </p>
             <div className="flex items-center gap-4 text-gray-500 text-sm font-medium">
               <Link href="#" className="hover:text-white transition-colors">User Terms & Conditions</Link>
